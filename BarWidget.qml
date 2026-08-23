@@ -378,7 +378,7 @@ BarWidget {
     evalPending = false
     evalNotify = notify || ""
     evalNotifyGlyph = glyph || ""
-    evalProc.command = ["hyprctl", "eval", expr]
+    evalProc.command = ["timeout", "10", "hyprctl", "eval", expr]
     evalProc.running = true
   }
 
@@ -599,10 +599,12 @@ BarWidget {
   }
 
   // The live reading is the only source of truth for the swap icon: the eval
-  // that toggles is async, so state is queried again after it lands.
+  // that toggles is async, so state is queried again after it lands. The
+  // coreutils `timeout` bounds a hung hyprctl without a QML timer (same
+  // deadline hardening as evalProc; security-baseline finding, 2026-08-24).
   Process {
     id: queryProc
-    command: ["hyprctl", "-j", "devices"]
+    command: ["timeout", "10", "hyprctl", "-j", "devices"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -662,7 +664,7 @@ BarWidget {
         root.evalNotifyGlyph = root.queuedNotifyGlyph
         root.queuedNotify = ""
         root.queuedNotifyGlyph = ""
-        evalProc.command = ["hyprctl", "eval", expr]
+        evalProc.command = ["timeout", "10", "hyprctl", "eval", expr]
         evalProc.running = true
       } else {
         root.broadcast("refresh")
@@ -745,17 +747,20 @@ BarWidget {
   // race (FileView.setText is async), so one shell command does both in
   // order. Toggles load after user bindings, so the pinned bind always wins
   // while the file exists, and vanishing restores whatever was there before.
+  // Paths reach the shell only through shellQuote — a quote-bearing HOME
+  // must not change the command (security-baseline finding, 2026-08-24).
   Process {
     id: writePinProc
     command: ["sh", "-c",
-      "cat > '" + root.pinPath + "' <<'OMASWISS_PIN_EOF'\n"
+      "cat > " + shellQuote(root.pinPath) + " <<'OMASWISS_PIN_EOF'\n"
       + root.pinLua
       + "OMASWISS_PIN_EOF\nhyprctl reload"]
   }
 
   Process {
     id: removePinProc
-    command: ["sh", "-c", "rm -f '" + root.pinPath + "' && hyprctl reload"]
+    command: ["sh", "-c",
+      "rm -f " + shellQuote(root.pinPath) + " && hyprctl reload"]
   }
 
   // Look state mirrors the toggle file's existence, same as the pin file:
@@ -771,18 +776,20 @@ BarWidget {
   }
 
   // Same write-then-reload-in-one-command pattern as the pin file: the flag
-  // write and the reload that applies it must not race.
+  // write and the reload that applies it must not race. shellQuote on the
+  // path for the same reason as writePinProc.
   Process {
     id: writeLookProc
     command: ["sh", "-c",
-      "cat > '" + root.lookFlagPath + "' <<'OMASWISS_LOOK_EOF'\n"
+      "cat > " + shellQuote(root.lookFlagPath) + " <<'OMASWISS_LOOK_EOF'\n"
       + root.lookLua
       + "OMASWISS_LOOK_EOF\nhyprctl reload"]
   }
 
   Process {
     id: removeLookProc
-    command: ["sh", "-c", "rm -f '" + root.lookFlagPath + "' && hyprctl reload"]
+    command: ["sh", "-c",
+      "rm -f " + shellQuote(root.lookFlagPath) + " && hyprctl reload"]
   }
 
   // One-shot spawner for the quick actions. The actual tool runs detached
