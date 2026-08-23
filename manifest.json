@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "glasschan.oma-swiss",
   "name": "OmaSwiss",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": "Glass Chan",
   "license": "MIT",
   "description": "One bar icon, four Hyprland tools: laptop Super⇄Alt swap, single-window aspect ratio, Opinionated Looks, and one-click screenshots, OCR & recording. No daemon, no idle cost.",

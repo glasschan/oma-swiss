@@ -104,7 +104,8 @@ BarWidget {
   // overrides looknfeel.lua); absent = Omarchy defaults. Static looks only —
   // no animation overrides: the former macSpring set was removed because it
   // was indistinguishable from stock Omarchy animations. Values are the
-  // user's live tuning (border 5, rounding 6).
+  // user's live tuning (border 5, rounding 6, gradient rim bright-on-top,
+  // blur size 6 / vibrancy 0.20, shadow 20/4/rgba(00000028)).
   readonly property string lookFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/opinionated-looks.lua"
   property bool lookOn: false
 
@@ -117,8 +118,8 @@ BarWidget {
     "  general = {",
     "    border_size = 5,",
     "    col = {",
-    '      active_border = "rgba(ffffff18)",',
-    '      inactive_border = "rgba(ffffff0d)",',
+    '      active_border = { colors = { "rgba(ffffff30)", "rgba(ffffff08)" }, angle = 90 },',
+    '      inactive_border = { colors = { "rgba(ffffff18)", "rgba(ffffff06)" }, angle = 90 },',
     "    },",
     "    resize_on_border = true,",
     "  },",
@@ -130,16 +131,17 @@ BarWidget {
     "      enabled = true,",
     "      range = 20,",
     "      render_power = 4,",
-    '      color = "rgba(00000050)",',
+    '      color = "rgba(00000028)",',
     "    },",
     "    blur = {",
     "      enabled = true,",
-    "      size = 4,",
+    "      size = 6,",
     "      passes = 3,",
     "      special = true,",
     "      brightness = 0.90,",
     "      contrast = 0.85,",
-    "      vibrancy = 0.10,",
+    "      vibrancy = 0.20,",
+    "      vibrancy_darkness = 0.1,",
     "      noise = 0.0,",
     "    },",
     "    dim_inactive = false,",
@@ -151,8 +153,8 @@ BarWidget {
     "hl.config({",
     "  group = {",
     "    col = {",
-    '      border_active = "rgba(ffffff18)",',
-    '      border_inactive = "rgba(ffffff0d)",',
+    '      border_active = { colors = { "rgba(ffffff30)", "rgba(ffffff08)" }, angle = 90 },',
+    '      border_inactive = { colors = { "rgba(ffffff18)", "rgba(ffffff06)" }, angle = 90 },',
     "    },",
     "  },",
     "})"
@@ -161,11 +163,11 @@ BarWidget {
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 11 codepoints
-  // this plugin uses (6 KB). Rebuild it from the upstream webfont when an icon
+  // so the bundled tabler-icons.ttf is a subset holding only the 8 codepoints
+  // this plugin uses (4 KB). Rebuild it from the upstream webfont when an icon
   // changes:
   //   python -m fontTools.subset tabler-icons.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57 \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through
@@ -254,8 +256,9 @@ BarWidget {
       pin_label: "Pin to hotkey",
       pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
       looks_label: "Opinionated Looks",
-      looks_desc: "Rounded corners, hairline borders, soft shadow, vibrancy blur. Off = Omarchy defaults.",
+      looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
       lang_tip: "切換介面語言 · Switch UI language",
+      upd_tip: "v%1 is out — click to update",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
@@ -271,16 +274,17 @@ BarWidget {
       swap_label: "左 Super／左 Alt 互換",
       swap_desc: "只影響內置鍵盤；外接鍵盤保持原本設定。",
       off: "關",
-      width: "闊", height: "高", apply: "套用",
+      width: "寬", height: "高", apply: "套用",
       active: "目前", custom: "自訂", offState: "關閉",
       pin_label: "固定快捷鍵",
-      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次嘅比例（而唔係預設 1:1），隨時可以還原。",
+      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
       looks_label: "Opinionated Looks",
-      looks_desc: "圓角、髮絲邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
+      looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
       lang_tip: "切換介面語言 · Switch UI language",
+      upd_tip: "新版本 v%1 可用，點擊更新",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
-      qa_window_l: "視窗", qa_window_t: "截圖 — 揀選視窗",
-      qa_full_l: "全螢幕", qa_full_t: "截圖 — 成個螢幕",
+      qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
+      qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
       qa_pick_l: "取色", qa_pick_t: "螢幕取色器",
       qa_ocr_l: "OCR", qa_ocr_t: "OCR 文字辨識（中英）",
       qa_record_l: "錄影", qa_record_t: "開始／停止螢幕錄影"
@@ -301,6 +305,54 @@ BarWidget {
     console.log("oma-swiss: ui lang", lang)
     uiLang = lang
     langFile.setText(lang)
+  }
+
+  // ---- update indicator --------------------------------------------------------
+
+  // Upgrade badge in the panel header. Fully event-driven: the only network
+  // touch is one GitHub-API call when the panel opens with a cache older than
+  // 24 h — no timers, no polling, and nothing at all while the panel stays
+  // closed (the badge lives in the lazily-loaded panel). Cache line:
+  // "<epoch-ms> <version>"; empty version = last check failed.
+  readonly property string releasesUrl: "https://github.com/glasschan/oma-swiss/releases"
+  readonly property string updateCachePath: stateDir + "/update-check"
+  property string localVersion: ""
+  property string latestVersion: ""
+  property real updateCheckedAt: 0
+
+  readonly property bool updateAvailable: semverGreater(latestVersion, localVersion)
+
+  function semverGreater(a, b) {
+    var pa = String(a).replace(/^v/, "").split(".")
+    var pb = String(b).replace(/^v/, "").split(".")
+    for (var i = 0; i < 3; i++) {
+      var va = parseInt(pa[i]) || 0
+      var vb = parseInt(pb[i]) || 0
+      if (va !== vb) return va > vb
+    }
+    return false
+  }
+
+  function maybeCheckUpdate() {
+    if (updateProc.running) return
+    if (Date.now() - updateCheckedAt < 24 * 3600 * 1000) return
+    updateProc.running = true
+  }
+
+  // Badge click. Git-managed installs (marketplace / `omarchy plugin add
+  // <git-url>`) self-update in place: `omarchy plugin update`, then a shell
+  // restart — quickshell never re-executes the QML of a loaded plugin, so
+  // without the restart the old code keeps running (pattern borrowed from
+  // crmne.hyprmoncfg). Non-git installs (dev copies) fall back to the
+  // releases page. launchDetached already setsid's the script, so the update
+  // and restart survive their own shell being killed mid-flight.
+  function handleUpdateClick() {
+    launchDetached(["sh", "-c",
+      'd="$HOME/.config/omarchy/plugins/glasschan.oma-swiss"; '
+      + 'if [ -d "$d/.git" ]; then '
+      + 'out=$(omarchy plugin update glasschan.oma-swiss --yes 2>&1) || true; '
+      + 'printf %s "$out" | grep -q "^Updated" && omarchy-restart-shell; '
+      + 'else xdg-open ' + releasesUrl + '; fi'])
   }
 
   // ---- shared queued hyprctl eval -------------------------------------------
@@ -441,6 +493,7 @@ BarWidget {
     panelWanted = true
     panelLoader.active = true
     if (panelLoader.item) panelLoader.item.open()
+    maybeCheckUpdate()
   }
   function close() {
     panelWanted = false
@@ -503,6 +556,7 @@ BarWidget {
         + " pin=" + (root.pinHotkey ? "on" : "off")
         + " look=" + (root.lookOn ? "on" : "off")
         + " lang=" + root.uiLang
+        + " update=" + (root.updateAvailable ? root.latestVersion : "none")
     }
   }
 
@@ -750,6 +804,53 @@ BarWidget {
       root.uiLang = v === "zh" ? "zh" : "en"
     }
     onLoadFailed: root.uiLang = "en"
+  }
+
+  // Local version from the co-located manifest — one static read, no watch.
+  FileView {
+    id: manifestFile
+    path: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
+    printErrors: false
+    onLoaded: {
+      var m = /"version"\s*:\s*"([^"]+)"/.exec(text() || "")
+      if (m) root.localVersion = m[1]
+    }
+  }
+
+  // Update cache, watched so every monitor's badge agrees (same pattern as
+  // the lang file). A stale entry still shows its cached version; staleness
+  // only gates the next network check.
+  FileView {
+    id: updateCacheFile
+    path: root.updateCachePath
+    atomicWrites: true
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      var m = /^(\d+)(?:\s+(\S*))?/.exec((text() || "").trim())
+      if (!m) return
+      root.updateCheckedAt = parseInt(m[1]) || 0
+      root.latestVersion = m[2] || ""
+    }
+  }
+
+  // One-shot release check, fired only by maybeCheckUpdate (panel open +
+  // stale cache). The result — success or failure — restamps the cache, so
+  // the worst case is one bounded (--max-time) request per day.
+  Process {
+    id: updateProc
+    command: ["sh", "-c",
+      "curl -fsS --max-time 5 https://api.github.com/repos/glasschan/oma-swiss/releases/latest"]
+    stdout: StdioCollector {
+      id: updateOut
+      waitForEnd: true
+    }
+    stderr: StdioCollector { waitForEnd: true }
+    onExited: {
+      var m = /"tag_name"\s*:\s*"v?([^"]+)"/.exec(updateOut.text || "")
+      updateCacheFile.setText(Date.now() + " " + (m ? m[1] : ""))
+    }
   }
 
   Process {

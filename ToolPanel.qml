@@ -8,9 +8,9 @@ import qs.Ui
 // so the stock SUPER+CTRL+BACKSPACE toggle and CLI calls are reflected here
 // too. Every user-facing string resolves through tool.tr(), which makes the
 // top-right 中/EN button re-render the whole panel. Four sections in one
-// column: keyboard swap, window aspect (presets, custom, pin), opinionated
-// looks, and stateless quick capture actions (the panel closes on fire so
-// selection overlays get a clear screen).
+// column, quick actions first: stateless quick capture actions (the panel
+// closes on fire so selection overlays get a clear screen), then keyboard
+// swap, window aspect (presets, custom, pin), and opinionated looks.
 Panel {
   id: root
   moduleName: "glasschan.oma-swiss"
@@ -46,13 +46,32 @@ Panel {
         // glyph shows the language you get on click.
         Item {
           width: parent.width
-          height: Math.max(keyboardHeader.implicitHeight, langButton.size)
+          height: Math.max(actionsHeader.implicitHeight, langButton.size)
 
           PanelSectionHeader {
-            id: keyboardHeader
+            id: actionsHeader
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: root.tool ? root.tool.tr("sec_keyboard") : ""
+            text: root.tool ? root.tool.tr("sec_actions") : ""
+          }
+
+          // Upgrade badge: appears left of the language switch only when a
+          // newer GitHub release is known (state lives on the host widget).
+          // Tabler refresh-alert, rendered through iconFont like every other
+          // plugin icon (codepoints collide with Nerd Fonts' codicons).
+          PanelActionButton {
+            id: updateButton
+            anchors.right: langButton.left
+            anchors.rightMargin: Style.spacing.controlGap
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.tool && root.tool.updateAvailable
+            iconText: "\uED57"
+            fontFamily: root.tool ? root.tool.iconFont : ""
+            foreground: Color.urgent
+            hoverColor: Color.urgent
+            tooltipText: root.tool && root.tool.updateAvailable
+              ? root.tool.tr("upd_tip").arg(root.tool.latestVersion) : ""
+            onClicked: if (root.tool) root.tool.handleUpdateClick()
           }
 
           PanelActionButton {
@@ -65,12 +84,54 @@ Panel {
           }
         }
 
+        // Six equal cells: icon button over a caption label. Stateless
+        // launchers — the tool owns the command list, this only renders it.
+        Row {
+          id: actionsRow
+          width: parent.width
+          spacing: Style.spacing.controlGap
+          readonly property real cellW: (width - (quickActions.count - 1) * spacing) / Math.max(1, quickActions.count)
+
+          Repeater {
+            id: quickActions
+            model: root.tool ? root.tool.quickActions : []
+
+            delegate: Column {
+              required property var modelData
+              width: actionsRow.cellW
+              spacing: Style.space(4)
+
+              PanelActionButton {
+                iconText: modelData.icon
+                fontFamily: root.tool ? root.tool.iconFont : ""
+                tooltipText: root.tool ? root.tool.tr(modelData.tip) : ""
+                size: Style.space(38)
+                fontSize: Style.font.iconLarge
+                anchors.horizontalCenter: parent.horizontalCenter
+                onClicked: if (root.tool) root.tool.runQuickAction(modelData.id)
+              }
+
+              Text {
+                text: root.tool ? root.tool.tr(modelData.label) : ""
+                color: Qt.darker(root.barForeground, 1.4)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                anchors.horizontalCenter: parent.horizontalCenter
+              }
+            }
+          }
+        }
+
+        PanelSeparator {}
+
+        PanelSectionHeader { text: root.tool ? root.tool.tr("sec_keyboard") : "" }
+
         Toggle {
           width: parent.width
           label: root.tool ? root.tool.tr("swap_label") : ""
           description: root.tool ? root.tool.tr("swap_desc") : ""
           checked: root.tool && root.tool.swapped
-          onClicked: if (root.tool) root.tool.toggleSwap()
+          onClicked: if (root.tool) root.toggleSwap()
         }
 
         PanelSeparator {}
@@ -185,47 +246,6 @@ Panel {
           onClicked: if (root.tool) root.tool.setLook(!root.tool.lookOn)
         }
 
-        PanelSeparator {}
-
-        PanelSectionHeader { text: root.tool ? root.tool.tr("sec_actions") : "" }
-
-        // Six equal cells: icon button over a caption label. Stateless
-        // launchers — the tool owns the command list, this only renders it.
-        Row {
-          id: actionsRow
-          width: parent.width
-          spacing: Style.spacing.controlGap
-          readonly property real cellW: (width - (quickActions.count - 1) * spacing) / Math.max(1, quickActions.count)
-
-          Repeater {
-            id: quickActions
-            model: root.tool ? root.tool.quickActions : []
-
-            delegate: Column {
-              required property var modelData
-              width: actionsRow.cellW
-              spacing: Style.space(4)
-
-              PanelActionButton {
-                iconText: modelData.icon
-                fontFamily: root.tool ? root.tool.iconFont : ""
-                tooltipText: root.tool ? root.tool.tr(modelData.tip) : ""
-                size: Style.space(38)
-                fontSize: Style.font.iconLarge
-                anchors.horizontalCenter: parent.horizontalCenter
-                onClicked: if (root.tool) root.tool.runQuickAction(modelData.id)
-              }
-
-              Text {
-                text: root.tool ? root.tool.tr(modelData.label) : ""
-                color: Qt.darker(root.barForeground, 1.4)
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
-                anchors.horizontalCenter: parent.horizontalCenter
-              }
-            }
-          }
-        }
       }
     }
   }
