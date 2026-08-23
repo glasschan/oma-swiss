@@ -69,7 +69,7 @@ Panel {
             hoverColor: Color.urgent
             tooltipText: root.tool && root.tool.updateAvailable
               ? root.tool.tr("upd_tip").arg(root.tool.latestVersion) : ""
-            onClicked: if (root.tool) root.tool.openReleasesPage()
+            onClicked: if (root.tool) root.tool.handleUpdateClick()
           }
 
           PanelActionButton {

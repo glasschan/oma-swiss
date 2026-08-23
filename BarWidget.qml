@@ -258,7 +258,7 @@ BarWidget {
       looks_label: "Opinionated Looks",
       looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
       lang_tip: "切換介面語言 · Switch UI language",
-      upd_tip: "v%1 is out — click for release notes",
+      upd_tip: "v%1 is out — click to update",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
@@ -281,7 +281,7 @@ BarWidget {
       looks_label: "Opinionated Looks",
       looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
       lang_tip: "切換介面語言 · Switch UI language",
-      upd_tip: "新版本 v%1 可用，點擊查看更新內容",
+      upd_tip: "新版本 v%1 可用，點擊更新",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
       qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
@@ -339,8 +339,20 @@ BarWidget {
     updateProc.running = true
   }
 
-  function openReleasesPage() {
-    launchDetached(["xdg-open", releasesUrl])
+  // Badge click. Git-managed installs (marketplace / `omarchy plugin add
+  // <git-url>`) self-update in place: `omarchy plugin update`, then a shell
+  // restart — quickshell never re-executes the QML of a loaded plugin, so
+  // without the restart the old code keeps running (pattern borrowed from
+  // crmne.hyprmoncfg). Non-git installs (dev copies) fall back to the
+  // releases page. launchDetached already setsid's the script, so the update
+  // and restart survive their own shell being killed mid-flight.
+  function handleUpdateClick() {
+    launchDetached(["sh", "-c",
+      'd="$HOME/.config/omarchy/plugins/glasschan.oma-swiss"; '
+      + 'if [ -d "$d/.git" ]; then '
+      + 'out=$(omarchy plugin update glasschan.oma-swiss --yes 2>&1) || true; '
+      + 'printf %s "$out" | grep -q "^Updated" && omarchy-restart-shell; '
+      + 'else xdg-open ' + releasesUrl + '; fi'])
   }
 
   // ---- shared queued hyprctl eval -------------------------------------------
