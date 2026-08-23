@@ -1,2 +1,9 @@
+# tooling artifacts — not part of the plugin
 .codegraph/
 dist/
+
+# editor / OS junk
+.DS_Store
+*.swp
+.idea/
+.vscode/
