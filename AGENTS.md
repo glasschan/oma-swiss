@@ -87,7 +87,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Ownership
 
-- Root-owned files: `README.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `tabler-icons.ttf` (subset), `preview.png` (73:35 marketing cover), `panel.png` (raw panel screenshot), `design/cover.html` (cover source), `.github/workflows/*`, `scripts/check-submission.sh`, `.gitignore`, and root-level project documentation.
+- Root-owned files: `README.md`, `README.zh-Hant.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `tabler-icons.ttf` (subset), `preview.png` (73:35 marketing cover), `panel.png` (raw panel screenshot), `design/cover.html` (cover source), `.github/workflows/*`, `scripts/check-submission.sh`, `scripts/check-hardening.sh`, `.gitignore`, and root-level project documentation.
 
 ## Local Contracts
 
