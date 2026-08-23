@@ -24,3 +24,10 @@ jobs:
 
       - name: Marketplace submission pre-checks
         run: scripts/check-submission.sh
+
+      # Regression tripwires for the security-baseline classes that reached
+      # us as a marketplace comment (shell quoting of QML-derived paths,
+      # deadlines on compositor/network processes) plus the repo's own copy
+      # rules (zh must be 書面語). See the script header for the exemptions.
+      - name: Hardening + copy tripwires
+        run: scripts/check-hardening.sh
