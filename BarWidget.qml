@@ -65,9 +65,7 @@ BarWidget {
     { label: "1:1", w: 1, h: 1 },
     { label: "4:3", w: 4, h: 3 },
     { label: "3:2", w: 3, h: 2 },
-    { label: "16:10", w: 16, h: 10 },
-    { label: "16:9", w: 16, h: 9 },
-    { label: "21:9", w: 21, h: 9 }
+    { label: "16:9", w: 16, h: 9 }
   ]
 
   function aspectIsPreset(w, h) {

@@ -3,7 +3,7 @@
 A minimal-resource Omarchy bar plugin combining two Hyprland toggles behind one icon:
 
 - **Super ⇄ Alt swap** — swap Left Super and Left Alt on the built-in laptop keyboard (external keyboards keep their stock mapping). Successor of `glasschan.super-alt-swap`.
-- **Single-window aspect ratio** — constrain the lone window to a chosen ratio: presets (1:1, 4:3, 3:2, 16:10, 16:9, 21:9), any custom `W:H` up to 64, or off.
+- **Single-window aspect ratio** — constrain the lone window to a chosen ratio: presets (1:1, 4:3, 3:2, 16:9), any custom `W:H` up to 64, or off.
 
 ## Bar usage
 

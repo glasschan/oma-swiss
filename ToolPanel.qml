@@ -89,15 +89,21 @@ Panel {
 
         PanelSectionHeader { text: "CUSTOM RATIO" }
 
+        // Three equal columns on one line — W field, H field, Apply — each
+        // filling a third of the row. The Apply cell bottom-aligns with the
+        // spinboxes (it has no label above it).
         Row {
-            spacing: Style.spacing.md
+            id: customRow
+            width: parent.width
+            spacing: Style.spacing.controlGap
+            readonly property real cellW: (width - 2 * spacing) / 3
 
             NumberField {
               id: customW
               label: "Width"
               from: 1
               to: 64
-              fieldWidth: Style.space(26)
+              fieldWidth: customRow.cellW
             }
 
             NumberField {
@@ -105,14 +111,20 @@ Panel {
               label: "Height"
               from: 1
               to: 64
-              fieldWidth: Style.space(26)
+              fieldWidth: customRow.cellW
             }
 
-            Button {
-              text: "Apply"
-              anchors.baseline: customW.bottom
-              onClicked: if (root.tool)
-                root.tool.setAspect(customW.field.value, customH.field.value)
+            Item {
+              width: customRow.cellW
+              height: customH.height
+
+              Button {
+                text: "Apply"
+                width: parent.width
+                anchors.bottom: parent.bottom
+                onClicked: if (root.tool)
+                  root.tool.setAspect(customW.field.value, customH.field.value)
+              }
             }
 
             Component.onCompleted: {
