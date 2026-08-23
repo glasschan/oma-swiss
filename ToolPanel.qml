@@ -152,15 +152,6 @@ Panel {
           checked: root.tool && root.tool.pinHotkey
           onClicked: if (root.tool) root.tool.setPin(!root.tool.pinHotkey)
         }
-
-        Text {
-          width: parent.width
-          wrapMode: Text.WordWrap
-          color: Qt.darker(root.barForeground, 1.5)
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-          text: "Constrains the lone window to this ratio, like the stock 1:1 toggle. Unpinned, SUPER+CTRL+BACKSPACE keeps its stock meaning; pinned, it follows this panel."
-        }
       }
     }
   }
