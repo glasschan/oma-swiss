@@ -1,0 +1,145 @@
+import QtQuick
+import qs.Commons
+import qs.Ui
+
+// Popup for the Hypr Toolbox bar icon. A pure view: every piece of state and
+// every action lives on the host BarWidget injected as `hostWidget`. The
+// aspect chips derive their selection from the flag-file-mirrored aspectW/H,
+// so the stock SUPER+CTRL+BACKSPACE toggle and CLI calls are reflected here
+// too.
+Panel {
+  id: root
+  moduleName: "glasschan.hypr-toolbox"
+
+  property var anchorItem: null
+  property var hostWidget: null
+  readonly property var barIdentity: hostWidget || root
+  readonly property var tool: hostWidget
+
+  KeyboardPanel {
+    id: panel
+    anchorItem: root.anchorItem
+    owner: root.barIdentity
+    bar: root.bar
+    open: root.opened
+    focusTarget: keyCatcher
+    contentWidth: panel.fittedContentWidth(Style.space(330))
+    contentHeight: panel.fittedContentHeight(column.implicitHeight, Style.space(440))
+
+    PanelKeyCatcher {
+      id: keyCatcher
+      anchors.fill: parent
+      onCloseRequested: root.close()
+      onTabRequested: function(direction) { root.switchPanel(direction) }
+
+      Column {
+        id: column
+        width: parent.width
+        spacing: Style.space(10)
+
+        PanelSectionHeader { text: "SUPER ⇄ ALT · LAPTOP KEYBOARD" }
+
+        Toggle {
+          width: parent.width
+          label: "Swap Left Super / Left Alt"
+          description: "Built-in keyboard only. External keyboards keep their stock mapping."
+          checked: root.tool && root.tool.swapped
+          onClicked: if (root.tool) root.tool.toggleSwap()
+        }
+
+        PanelSeparator {}
+
+        PanelSectionHeader { text: "SINGLE-WINDOW ASPECT" }
+
+        Flow {
+          width: parent.width
+          spacing: Style.spacing.controlGap
+
+          Button {
+            text: "Off"
+            selected: root.tool && !root.tool.aspectOn
+            onClicked: if (root.tool) root.tool.clearAspect()
+          }
+
+          Repeater {
+            model: root.tool ? root.tool.aspectPresets : []
+
+            delegate: Button {
+              required property var modelData
+              text: modelData.label
+              selected: root.tool
+                && root.tool.aspectW === modelData.w
+                && root.tool.aspectH === modelData.h
+              onClicked: if (root.tool) root.tool.setAspect(modelData.w, modelData.h)
+            }
+          }
+        }
+
+        Text {
+          color: Qt.darker(root.barForeground, 1.4)
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          text: root.tool && root.tool.aspectOn
+            ? "Active: " + root.tool.aspectW + ":" + root.tool.aspectH
+              + (root.tool.aspectIsPreset(root.tool.aspectW, root.tool.aspectH) ? "" : " · custom")
+            : "Active: off"
+        }
+
+        PanelSeparator {}
+
+        PanelSectionHeader { text: "CUSTOM RATIO" }
+
+        Row {
+            spacing: Style.spacing.md
+
+            NumberField {
+              id: customW
+              label: "Width"
+              from: 1
+              to: 64
+              fieldWidth: Style.space(26)
+            }
+
+            NumberField {
+              id: customH
+              label: "Height"
+              from: 1
+              to: 64
+              fieldWidth: Style.space(26)
+            }
+
+            Button {
+              text: "Apply"
+              anchors.baseline: customW.bottom
+              onClicked: if (root.tool)
+                root.tool.setAspect(customW.field.value, customH.field.value)
+            }
+
+            Component.onCompleted: {
+              var t = root.tool
+              if (!t) return
+              if (t.aspectOn && !t.aspectIsPreset(t.aspectW, t.aspectH)) {
+                customW.field.value = t.aspectW
+                customH.field.value = t.aspectH
+              } else if (t.customW > 0 && t.customH > 0) {
+                customW.field.value = t.customW
+                customH.field.value = t.customH
+              } else {
+                customW.field.value = 21
+                customH.field.value = 9
+              }
+            }
+        }
+
+        Text {
+          width: parent.width
+          wrapMode: Text.WordWrap
+          color: Qt.darker(root.barForeground, 1.5)
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          text: "Constrains the lone window to this ratio, like the stock 1:1 toggle. The stock SUPER+CTRL+BACKSPACE binding still writes 1:1; this panel follows it."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "glasschan.hypr-toolbox",
+  "name": "Hypr Toolbox",
+  "version": "0.1.0",
+  "author": "glasschan",
+  "license": "MIT",
+  "description": "Minimal toolbox bar widget: laptop Super/Alt swap and single-window aspect ratio with presets and custom ratios",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Hypr Toolbox",
+    "description": "Laptop Super/Alt swap and single-window aspect ratio, from one bar icon",
+    "category": "Compositor",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
