@@ -94,8 +94,9 @@ When the user requests a durable behavior change, record it here or in the relev
 - Flag files are the source of truth and must stay byte-compatible:
   - Swap: `~/.local/state/omarchy/toggles/hypr/super-alt-swap.lua` (same path and Lua content as the retired super-alt-swap plugin).
   - Aspect: `~/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua` — written directly with the chosen ratio; never call `omarchy-hyprland-toggle` for it (its "on" copies stock 1:1).
-- Custom-ratio memory: `~/.local/state/glasschan.hypr-toolbox/last-aspect`, plain `"w h"` text.
-- IPC surface (CLI = `omarchy-shell glasschan.hypr-toolbox <fn>`, exact function names, no hyphen mapping): `toggle` (swap), `aspect w h`, `aspectOff`, `panel`, `open`, `close`, `status`.
+- Custom-ratio memory: `~/.local/state/glasschan.hypr-toolbox/last-aspect`, plain `"w h"` text — the LAST ratio set (preset or custom); drives panel prefill and `aspectToggle`.
+- Hotkey pin: `~/.local/state/omarchy/toggles/hypr/hypr-toolbox-hotkey.lua` — exists = pinned. Its static Lua does `hl.unbind("SUPER + CTRL + BACKSPACE")` + `o.bind(..., "omarchy-shell glasschan.hypr-toolbox aspectToggle")`; toggles load after user bindings, so the pinned bind wins while the file exists and removal restores whatever was bound before (stock or the user's own override). The write and the activating `hyprctl reload` MUST stay one shell command (FileView.setText is async — a separate reload Process would race).
+- IPC surface (CLI = `omarchy-shell glasschan.hypr-toolbox <fn>`, exact function names, no hyphen mapping): `toggle` (swap), `aspect w h`, `aspectOff`, `aspectToggle`, `pin`, `panel`, `open`, `close`, `status`.
 - Bar interactions: left-click opens the popup, right-click toggles the swap directly.
 
 ## Work Guidance
@@ -114,6 +115,7 @@ When the user requests a durable behavior change, record it here or in the relev
   - `omarchy-shell glasschan.hypr-toolbox aspectOff` — getoption back to `[0, 0]`; flag file absent
   - `omarchy-shell glasschan.hypr-toolbox status` reports all three states correctly
   - rapid consecutive CLI calls land in order (queued eval)
+  - pin: `omarchy-shell glasschan.hypr-toolbox pin` → pin file exists, `hyprctl binds` shows "Toggle single-window aspect (hypr-toolbox)" and the previous BACKSPACE bind is gone; `aspectToggle` cycles off ⇄ last ratio and panel ratio changes move the target; `pin` again → pin file absent and the previous binding is back
   - external writer check: run the stock `omarchy-hyprland-window-single-square-aspect-toggle` once; `status` must report `aspect=1:1` (watcher picked it up), then restore
 - End of test session: leave swap off; restore the user's aspect ratio (currently 4:3) unless asked otherwise.
 

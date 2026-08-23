@@ -16,12 +16,30 @@ The aspect tool writes the stock toggle flag
 ## CLI (also bindable to hotkeys)
 
 ```bash
-omarchy-shell glasschan.hypr-toolbox toggle        # Super⇄Alt on/off
+omarchy-shell glasschan.hypr-toolbox toggle         # Super⇄Alt on/off
 omarchy-shell glasschan.hypr-toolbox aspect 21 10  # custom ratio
 omarchy-shell glasschan.hypr-toolbox aspectOff     # ratio off
+omarchy-shell glasschan.hypr-toolbox aspectToggle  # off <-> last ratio
+omarchy-shell glasschan.hypr-toolbox pin           # pin/unpin the hotkey
 omarchy-shell glasschan.hypr-toolbox panel         # open/close popup
 omarchy-shell glasschan.hypr-toolbox status        # current state
 ```
+
+## Pinning the hotkey (optional)
+
+Stock `SUPER+CTRL+BACKSPACE` always toggles its own fixed 1:1 and knows
+nothing about ratios set here. The panel's **Pin to hotkey** toggle changes
+that: while pinned, the hotkey toggles **your last ratio** instead — set 16:9
+in the panel, and the hotkey cycles off ⇄ 16:9; pick another ratio and the
+hotkey follows.
+
+Pinning writes one user-owned toggle file
+(`~/.local/state/omarchy/toggles/hypr/hypr-toolbox-hotkey.lua`) that
+re-registers the binding on every config load. It touches nothing in
+`~/.config/hypr`, survives `omarchy update` and `omarchy refresh hyprland`,
+and unpinning restores the previous binding exactly. The Omarchy menu's
+"1-Window Ratio" entry is not affected by pinning (it keeps its stock
+meaning); this panel reflects whatever any of them does.
 
 ## Resource design
 

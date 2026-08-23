@@ -49,12 +49,28 @@ BarWidget {
   // rewrites the flag to 1:1, the watcher below picks the new value up.
   readonly property string aspectFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua"
 
-  // Last custom (non-preset) ratio so the panel can prefill after an off
-  // cycle. Plain "w h" text; "0 0" = never set.
+  // The last ratio the user set (preset or custom): the panel prefills from
+  // it and the pinned hotkey toggles it. Plain "w h" text; "0 0" = never set.
   readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/glasschan.hypr-toolbox"
-  readonly property string customPath: stateDir + "/last-aspect"
-  property int customW: 0
-  property int customH: 0
+  readonly property string lastPath: stateDir + "/last-aspect"
+  property int lastW: 0
+  property int lastH: 0
+
+  // Pin: while the pin toggle file exists, SUPER+CTRL+BACKSPACE toggles the
+  // toolbox's last ratio instead of the stock 1:1. The file registers the
+  // binding on every config load (toggles load last, after user bindings),
+  // so it survives omarchy updates and refreshes and needs no edits to
+  // ~/.config/hypr. File exists = pinned; content is static.
+  readonly property string pinPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/hypr-toolbox-hotkey.lua"
+  property bool pinHotkey: false
+
+  readonly property string pinLua:
+    "-- glasschan.hypr-toolbox: pin the single-window aspect hotkey.\n" +
+    "-- While this file exists, SUPER+CTRL+BACKSPACE toggles the toolbox's\n" +
+    "-- last ratio instead of the stock 1:1. Remove the file and reload to\n" +
+    "-- restore the previous binding.\n" +
+    "hl.unbind(\"SUPER + CTRL + BACKSPACE\")\n" +
+    "o.bind(\"SUPER + CTRL + BACKSPACE\", \"Toggle single-window aspect (hypr-toolbox)\", \"omarchy-shell glasschan.hypr-toolbox aspectToggle\")\n"
 
   // 0 0 = off. Mirrors the flag file — the single source of truth.
   property int aspectW: 0
@@ -134,7 +150,22 @@ BarWidget {
     aspectH = hi
     aspectFlagFile.setText(aspectFlagLua(wi, hi))
     queueEval(evalAspect(wi, hi))
-    if (!aspectIsPreset(wi, hi)) saveCustom(wi, hi)
+    saveLast(wi, hi)
+  }
+
+  // The pinned hotkey flips between off and the last ratio set here; the
+  // same function serves anyone binding it manually.
+  function aspectToggle() {
+    if (aspectOn) clearAspect()
+    else if (lastW > 0 && lastH > 0) setAspect(lastW, lastH)
+    else console.warn("hypr-toolbox: aspectToggle with no last ratio")
+  }
+
+  function setPin(on) {
+    console.log("hypr-toolbox: pin hotkey", on ? "on" : "off")
+    pinHotkey = on
+    if (on) writePinProc.running = true
+    else removePinProc.running = true
   }
 
   function clearAspect() {
@@ -145,10 +176,10 @@ BarWidget {
     queueEval(evalAspect(0, 0))
   }
 
-  function saveCustom(w, h) {
-    customW = w
-    customH = h
-    customFile.setText(w + " " + h)
+  function saveLast(w, h) {
+    lastW = w
+    lastH = h
+    lastFile.setText(w + " " + h)
   }
 
   // ---- state refresh -------------------------------------------------------------
@@ -221,22 +252,27 @@ BarWidget {
   }
 
   // CLI access — the same paths a bar click drives:
-  //   omarchy-shell glasschan.hypr-toolbox toggle        swap on/off
-  //   omarchy-shell glasschan.hypr-toolbox aspect 21 10  set ratio
-  //   omarchy-shell glasschan.hypr-toolbox aspectOff     ratio off
-  //   omarchy-shell glasschan.hypr-toolbox panel         open/close popup
+  //   omarchy-shell glasschan.hypr-toolbox toggle         swap on/off
+  //   omarchy-shell glasschan.hypr-toolbox aspect 21 10   set ratio
+  //   omarchy-shell glasschan.hypr-toolbox aspectOff      ratio off
+  //   omarchy-shell glasschan.hypr-toolbox aspectToggle   off <-> last ratio
+  //   omarchy-shell glasschan.hypr-toolbox pin            pin/unpin the hotkey
+  //   omarchy-shell glasschan.hypr-toolbox panel          open/close popup
   IpcHandler {
     target: "glasschan.hypr-toolbox"
     function toggle(): void { root.toggleSwap() }
     function aspect(w: string, h: string): void { root.setAspect(w, h) }
     function aspectOff(): void { root.clearAspect() }
+    function aspectToggle(): void { root.aspectToggle() }
+    function pin(): void { root.setPin(!root.pinHotkey) }
     function panel(): void { root.togglePanel() }
     function open(): void { root.open() }
     function close(): void { root.close() }
     function status(): string {
       return "swap=" + (root.swapped ? "on" : "off")
         + " aspect=" + (root.aspectOn ? root.aspectW + ":" + root.aspectH : "off")
-        + " custom=" + (root.customW > 0 ? root.customW + ":" + root.customH : "none")
+        + " last=" + (root.lastW > 0 ? root.lastW + ":" + root.lastH : "none")
+        + " pin=" + (root.pinHotkey ? "on" : "off")
     }
   }
 
@@ -375,17 +411,46 @@ BarWidget {
   }
 
   FileView {
-    id: customFile
-    path: root.customPath
+    id: lastFile
+    path: root.lastPath
     atomicWrites: true
     printErrors: false
     onLoaded: {
       var m = /^(\d+)\s+(\d+)$/.exec(text() || "")
       if (m) {
-        root.customW = parseInt(m[1]) || 0
-        root.customH = parseInt(m[2]) || 0
+        root.lastW = parseInt(m[1]) || 0
+        root.lastH = parseInt(m[2]) || 0
       }
     }
+  }
+
+  // Pin state mirrors the toggle file's existence; watching covers our own
+  // writes and any manual removal alike.
+  FileView {
+    id: pinFile
+    path: root.pinPath
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.pinHotkey = true
+    onLoadFailed: root.pinHotkey = false
+  }
+
+  // The pin file write and the reload that activates its binding must not
+  // race (FileView.setText is async), so one shell command does both in
+  // order. Toggles load after user bindings, so the pinned bind always wins
+  // while the file exists, and vanishing restores whatever was there before.
+  Process {
+    id: writePinProc
+    command: ["sh", "-c",
+      "cat > '" + root.pinPath + "' <<'HYPRTOOLBOX_PIN_EOF'\n"
+      + root.pinLua
+      + "HYPRTOOLBOX_PIN_EOF\nhyprctl reload"]
+  }
+
+  Process {
+    id: removePinProc
+    command: ["sh", "-c", "rm -f '" + root.pinPath + "' && hyprctl reload"]
   }
 
   Process {

@@ -133,14 +133,24 @@ Panel {
               if (t.aspectOn && !t.aspectIsPreset(t.aspectW, t.aspectH)) {
                 customW.field.value = t.aspectW
                 customH.field.value = t.aspectH
-              } else if (t.customW > 0 && t.customH > 0) {
-                customW.field.value = t.customW
-                customH.field.value = t.customH
+              } else if (t.lastW > 0 && t.lastH > 0) {
+                customW.field.value = t.lastW
+                customH.field.value = t.lastH
               } else {
                 customW.field.value = 21
                 customH.field.value = 9
               }
             }
+        }
+
+        PanelSeparator {}
+
+        Toggle {
+          width: parent.width
+          label: "Pin to hotkey"
+          description: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time."
+          checked: root.tool && root.tool.pinHotkey
+          onClicked: if (root.tool) root.tool.setPin(!root.tool.pinHotkey)
         }
 
         Text {
@@ -149,7 +159,7 @@ Panel {
           color: Qt.darker(root.barForeground, 1.5)
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          text: "Constrains the lone window to this ratio, like the stock 1:1 toggle. The stock SUPER+CTRL+BACKSPACE binding still writes 1:1; this panel follows it."
+          text: "Constrains the lone window to this ratio, like the stock 1:1 toggle. Unpinned, SUPER+CTRL+BACKSPACE keeps its stock meaning; pinned, it follows this panel."
         }
       }
     }
