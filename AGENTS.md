@@ -87,7 +87,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Ownership
 
-- Root-owned files: `README.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `tabler-icons.ttf` (subset), `preview.png`, `.github/workflows/*`, `scripts/check-submission.sh`, `.gitignore`, and root-level project documentation.
+- Root-owned files: `README.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `tabler-icons.ttf` (subset), `preview.png` (73:35 marketing cover), `panel.png` (raw panel screenshot), `design/cover.html` (cover source), `.github/workflows/*`, `scripts/check-submission.sh`, `.gitignore`, and root-level project documentation.
 
 ## Local Contracts
 
@@ -112,12 +112,12 @@ When the user requests a durable behavior change, record it here or in the relev
 - hyprctl eval prints errors on stdout and exits non-zero on Lua errors; check both streams.
 - The popup panel loads lazily (`Loader.active: false` until first open); keep it that way.
 - CI (`.github/workflows/ci.yml`): `validate` runs Omarchy's own `omarchy-plugin-validate`, fetched fresh from `basecamp/omarchy` branch `quattro` (`bin/omarchy-plugin-validate`) — the moving pin is intentional, so Omarchy manifest-schema drift fails CI instead of silently accepting a manifest the shell would reject. It also runs `scripts/check-submission.sh` (marketplace SUBMISSION.md rules: README install+removal+deps, LICENSE, preview ≤50 MB/40 MP). Release (`.github/workflows/release.yml`, on tag `v*`): tag must equal `manifest.json` `version`, then packages the plugin payload zip + sha256 and publishes the GitHub Release.
-- Preview retakes: the panel is ~`Style.space(330)`×`Style.space(600)` anchored top-right under the bar icon (bar is 26 px). `hyprctl layers` is useless for geometry here (`omarchy-keyboard-panel` is a full-screen catcher surface), and the dark wallpaper defeats color matching — take a matched pair of screenshots (panel closed / open, e.g. `omarchy-capture-screenshot`), diff them (>12/channel), and the changed-pixel bbox is the panel border ring; crop it with a ~14 px margin starting below y=26. Current `preview.png` (352×611) was taken this way on 2026-08-24 from the live v0.3.0 panel.
+- Preview assets: `preview.png` is the 73:35 (2190×1050) marketing cover rendered from `design/cover.html` (Swiss style, red accent; embeds `../panel.png` on the right). `panel.png` is the raw popup capture, produced by diffing a matched screenshot pair (panel closed/open) — a plain trim bbox on the diff fails (bar clock/cursor/wallpaper noise inflates it); use connected components, keep blobs with bbox ≥25% of the largest, mask the top 26 px bar rows, crop with a ~14 px margin starting below y=26. The full validated pipeline (commands included) lives in skill `oma-swiss-preview` (`~/.agents/skills/oma-swiss-preview/SKILL.md`); re-render the cover with headless Chromium from `design/cover.html` and sync both PNGs to the deployed copy (static assets — no shell restart).
 
 ## Verification
 
 - `omarchy plugin validate <repo root>` must pass before deploying.
-- Deploy loop: sync `BarWidget.qml`, `ToolPanel.qml`, `manifest.json`, `tabler-icons.ttf`, `preview.png`, and docs to `~/.config/omarchy/plugins/glasschan.oma-swiss/`, ensure `~/.config/omarchy/shell.json` bar layout has `{"id": "glasschan.oma-swiss"}` (replacing `glasschan.super-alt-swap` if migrating), then `omarchy restart shell` (hot-reload can keep serving stale compiled QML), then E2E:
+- Deploy loop: sync `BarWidget.qml`, `ToolPanel.qml`, `manifest.json`, `tabler-icons.ttf`, `preview.png`, `panel.png`, and docs to `~/.config/omarchy/plugins/glasschan.oma-swiss/`, ensure `~/.config/omarchy/shell.json` bar layout has `{"id": "glasschan.oma-swiss"}` (replacing `glasschan.super-alt-swap` if migrating), then `omarchy restart shell` (hot-reload can keep serving stale compiled QML), then E2E:
   - `omarchy-shell glasschan.oma-swiss toggle` — `hyprctl -j devices` shows `altwin:swap_lalt_lwin` added/removed on `at-translated-set-2-keyboard`; swap flag file appears/disappears
   - `omarchy-shell glasschan.oma-swiss aspect 16 10` — `hyprctl getoption layout:single_window_aspect_ratio` returns `[16, 10]`; flag file content has `{ 16, 10 }`
   - `omarchy-shell glasschan.oma-swiss aspectOff` — getoption back to `[0, 0]`; flag file absent
