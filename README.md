@@ -30,9 +30,9 @@ that costs nothing while you're not using it.
   3:2, and 16:9 presets, or any custom `W:H` up to 64. Your ratio survives
   reloads and logins, and the stock `SUPER+CTRL+BACKSPACE` binding works
   alongside it.
-- **Opinionated Looks** — rounded corners, hairline borders, soft shadows,
-  and vibrancy blur in one toggle. Switch it off and you're back to stock
-  Omarchy, exactly.
+- **Opinionated Looks** — rounded corners, a translucent 5px border, soft
+  shadows, and vibrancy blur in one toggle. Switch it off and you're back to
+  stock Omarchy, exactly.
 - **Quick capture** — region / window / fullscreen screenshots, a color
   picker, OCR (English + 中文), and screen recording start/stop, one click
   each. Capture overlays need a clear screen, so the panel closes as the
