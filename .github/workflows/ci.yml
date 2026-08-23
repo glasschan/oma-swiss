@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Run Omarchy's own installer gate, fetched fresh from upstream so schema
+      # drift in Omarchy fails this CI instead of silently accepting a manifest
+      # the running shell would reject. Printed before running so the log shows
+      # exactly what executed.
+      - name: Validate with upstream omarchy-plugin-validate (quattro)
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/basecamp/omarchy/quattro/bin/omarchy-plugin-validate" \
+            -o /tmp/omarchy-plugin-validate
+          cat /tmp/omarchy-plugin-validate
+          bash /tmp/omarchy-plugin-validate .
+
+      - name: Marketplace submission pre-checks
+        run: scripts/check-submission.sh

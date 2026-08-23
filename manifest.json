@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "glasschan.hypr-toolbox",
-  "name": "Hypr Toolbox",
-  "version": "0.2.0",
+  "id": "glasschan.oma-swiss",
+  "name": "OmaSwiss",
+  "version": "0.3.0",
   "author": "glasschan",
   "license": "MIT",
-  "description": "Minimal toolbox bar widget: laptop Super/Alt swap and single-window aspect ratio with presets and custom ratios",
+  "description": "Omarchy multitool bar widget: laptop Super/Alt swap, single-window aspect ratio, Opinionated Looks toggle, and quick capture actions",
   "kinds": [
     "bar-widget"
   ],
@@ -13,8 +13,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Hypr Toolbox",
-    "description": "Laptop Super/Alt swap and single-window aspect ratio, from one bar icon",
+    "displayName": "OmaSwiss",
+    "description": "Laptop Super/Alt swap, window aspect ratio, Opinionated Looks and quick capture actions, from one bar icon",
     "category": "Compositor",
     "allowMultiple": false,
     "defaultSection": "right"

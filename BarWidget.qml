@@ -2,16 +2,18 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import qs.Commons
 import qs.Ui
 
-// Hypr Toolbox: the state engine and bar icon. Every piece of state and every
+// OmaSwiss: the state engine and bar icon. Every piece of state and every
 // action lives here; ToolPanel.qml is a pure view injected with this widget as
-// hostWidget. Both tools are flag-file driven so they survive reloads and
-// logins without the widget running, and everything is event driven — no
-// timers, no polling.
+// hostWidget. The toggles (swap, aspect, opinionated looks) are flag-file
+// driven so they survive reloads and logins without the widget running, and
+// everything is event driven — no timers, no polling. Quick actions are
+// stateless one-shot launchers.
 BarWidget {
   id: root
-  moduleName: "glasschan.hypr-toolbox"
+  moduleName: "glasschan.oma-swiss"
 
   // ---- Tool 1: laptop Super/Alt swap --------------------------------------
 
@@ -51,26 +53,26 @@ BarWidget {
 
   // The last ratio the user set (preset or custom): the panel prefills from
   // it and the pinned hotkey toggles it. Plain "w h" text; "0 0" = never set.
-  readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/glasschan.hypr-toolbox"
+  readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/glasschan.oma-swiss"
   readonly property string lastPath: stateDir + "/last-aspect"
   property int lastW: 0
   property int lastH: 0
 
   // Pin: while the pin toggle file exists, SUPER+CTRL+BACKSPACE toggles the
-  // toolbox's last ratio instead of the stock 1:1. The file registers the
+  // plugin's last ratio instead of the stock 1:1. The file registers the
   // binding on every config load (toggles load last, after user bindings),
   // so it survives omarchy updates and refreshes and needs no edits to
   // ~/.config/hypr. File exists = pinned; content is static.
-  readonly property string pinPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/hypr-toolbox-hotkey.lua"
+  readonly property string pinPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/oma-swiss-hotkey.lua"
   property bool pinHotkey: false
 
   readonly property string pinLua:
-    "-- glasschan.hypr-toolbox: pin the single-window aspect hotkey.\n" +
-    "-- While this file exists, SUPER+CTRL+BACKSPACE toggles the toolbox's\n" +
+    "-- glasschan.oma-swiss: pin the single-window aspect hotkey.\n" +
+    "-- While this file exists, SUPER+CTRL+BACKSPACE toggles the plugin's\n" +
     "-- last ratio instead of the stock 1:1. Remove the file and reload to\n" +
     "-- restore the previous binding.\n" +
     "hl.unbind(\"SUPER + CTRL + BACKSPACE\")\n" +
-    "o.bind(\"SUPER + CTRL + BACKSPACE\", \"Toggle single-window aspect (hypr-toolbox)\", \"omarchy-shell glasschan.hypr-toolbox aspectToggle\")\n"
+    "o.bind(\"SUPER + CTRL + BACKSPACE\", \"Toggle single-window aspect (oma-swiss)\", \"omarchy-shell glasschan.oma-swiss aspectToggle\")\n"
 
   // 0 0 = off. Mirrors the flag file — the single source of truth.
   property int aspectW: 0
@@ -91,8 +93,214 @@ BarWidget {
   }
 
   function aspectFlagLua(w, h) {
-    return "-- glasschan.hypr-toolbox: single-window aspect ratio.\n" +
+    return "-- glasschan.oma-swiss: single-window aspect ratio.\n" +
       "hl.config({\n  layout = {\n    single_window_aspect_ratio = { " + w + ", " + h + " },\n  },\n})\n"
+  }
+
+  // ---- Tool 3: opinionated looks --------------------------------------------
+
+  // One flag file owns the whole opinionated look: exists = the block below
+  // runs on every config load (toggles load after user configs, so it
+  // overrides looknfeel.lua); absent = Omarchy defaults. Static looks only —
+  // no animation overrides: the former macSpring set was removed because it
+  // was indistinguishable from stock Omarchy animations. Values are the
+  // user's live tuning (border 5, rounding 6).
+  readonly property string lookFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/opinionated-looks.lua"
+  property bool lookOn: false
+
+  readonly property string lookLua: [
+    "-- glasschan.oma-swiss: opinionated looks.",
+    "-- Exists = this look applies on every Hyprland config load; remove the",
+    "-- file and reload to restore Omarchy defaults. Static look only —",
+    "-- animations stay whatever the rest of the config defines.",
+    "hl.config({",
+    "  general = {",
+    "    border_size = 5,",
+    "    col = {",
+    '      active_border = "rgba(ffffff18)",',
+    '      inactive_border = "rgba(ffffff0d)",',
+    "    },",
+    "    resize_on_border = true,",
+    "  },",
+    "})",
+    "hl.config({",
+    "  decoration = {",
+    "    rounding = 6,",
+    "    shadow = {",
+    "      enabled = true,",
+    "      range = 20,",
+    "      render_power = 4,",
+    '      color = "rgba(00000050)",',
+    "    },",
+    "    blur = {",
+    "      enabled = true,",
+    "      size = 4,",
+    "      passes = 3,",
+    "      special = true,",
+    "      brightness = 0.90,",
+    "      contrast = 0.85,",
+    "      vibrancy = 0.10,",
+    "      noise = 0.0,",
+    "    },",
+    "    dim_inactive = false,",
+    "    dim_strength = 0.0,",
+    "    active_opacity = 1.0,",
+    "    inactive_opacity = 1.0,",
+    "  },",
+    "})",
+    "hl.config({",
+    "  group = {",
+    "    col = {",
+    '      border_active = "rgba(ffffff18)",',
+    '      border_inactive = "rgba(ffffff0d)",',
+    "    },",
+    "  },",
+    "})"
+  ].join("\n") + "\n"
+
+  // ---- quick actions -----------------------------------------------------------
+
+  // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
+  // so the bundled tabler-icons.ttf is a subset holding only the 11 codepoints
+  // this plugin uses (6 KB). Rebuild it from the upstream webfont when an icon
+  // changes:
+  //   python -m fontTools.subset tabler-icons.ttf \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE \
+  //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
+  // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
+  // collide with Nerd Fonts' codicons range, so icons must render through
+  // iconFont (the FontLoader below), never the default family.
+  FontLoader {
+    id: tablerFont
+    source: Qt.resolvedUrl("tabler-icons.ttf")
+    onStatusChanged: if (status === FontLoader.Error)
+      console.warn("oma-swiss: failed to load tabler-icons.ttf")
+  }
+  readonly property string iconFont: tablerFont.name
+
+  // Stateless one-shot capture launchers. Labels/tips are keys into the
+  // strings table (rendered through tr()) so the UI language switch covers
+  // them too. The record entry checks for a live recording at click time
+  // (one pgrep, no polling) so the same button starts and stops. Binaries
+  // are Omarchy v4 stock.
+  readonly property var quickActions: [
+    { id: "region", icon: "\uF201", label: "qa_region_l", tip: "qa_region_t",
+      command: ["omarchy-capture-screenshot", "region"] },
+    { id: "window", icon: "\uEFE6", label: "qa_window_l", tip: "qa_window_t",
+      command: ["omarchy-capture-screenshot", "windows"] },
+    { id: "full", icon: "\uEA89", label: "qa_full_l", tip: "qa_full_t",
+      command: ["omarchy-capture-screenshot", "fullscreen"] },
+    { id: "pick", icon: "\uEBE6", label: "qa_pick_l", tip: "qa_pick_t",
+      command: ["sh", "-c", "pkill hyprpicker || hyprpicker -a"] },
+    { id: "ocr", icon: "\uFCC3", label: "qa_ocr_l", tip: "qa_ocr_t",
+      command: ["env", "OMARCHY_OCR_LANGS=eng+chi_tra", "omarchy-capture-text"] },
+    { id: "record", icon: "\uF452", label: "qa_record_l", tip: "qa_record_t",
+      command: ["sh", "-c",
+        "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording --stop-recording || omarchy-capture-screenrecording"] }
+  ]
+
+  function shellQuote(arg) {
+    return "'" + String(arg).replace(/'/g, "'\\''") + "'"
+  }
+
+  // Quick actions must launch the way Hyprland keybindings do: detached,
+  // with stdio pointed at /dev/null. A quickshell Process hands its child
+  // piped stdio, and slurp reads preselections from stdin before it ever
+  // maps its overlay — with a never-EOF pipe it blocks forever (the OCR
+  // hang, which also stacked every later capture tool behind a dead grab).
+  // setsid -f forks the tool into its own session, so it also survives
+  // actionProc restarts and shell restarts cleanly.
+  function launchDetached(argv) {
+    actionProc.command = ["sh", "-c",
+      "setsid -f " + argv.map(shellQuote).join(" ") + " </dev/null >/dev/null 2>&1"]
+    actionProc.running = true
+  }
+
+  function runQuickAction(id) {
+    for (var i = 0; i < quickActions.length; i++) {
+      if (quickActions[i].id !== id) continue
+      console.log("oma-swiss: quick action", id)
+      launchDetached(quickActions[i].command)
+      // Selection overlays need a clear screen — the panel gets out of the
+      // way the moment an action fires.
+      close()
+      return
+    }
+    console.warn("oma-swiss: unknown quick action", id)
+  }
+
+  // ---- UI language --------------------------------------------------------------
+
+  // Panel language: "en" or "zh" (Traditional Chinese). Every panel string
+  // resolves through tr(), so flipping uiLang re-renders the whole view.
+  // Persisted next to last-aspect so the choice survives reloads and every
+  // monitor's instance stays in sync via the file watch.
+  readonly property string langPath: stateDir + "/lang"
+  property string uiLang: "en"
+
+  // Parenthesized: a multiline object literal in a QML binding needs the
+  // parens, or the leading `{` parses as a binding block.
+  readonly property var strings: ({
+    en: {
+      sec_keyboard: "KEYBOARD",
+      sec_aspect: "WINDOW ASPECT",
+      sec_looks: "LOOK & FEEL",
+      sec_actions: "QUICK ACTIONS",
+      swap_label: "Swap Left Super / Left Alt",
+      swap_desc: "Built-in keyboard only. External keyboards keep their stock mapping.",
+      off: "Off",
+      width: "Width", height: "Height", apply: "Apply",
+      active: "Active", custom: "custom", offState: "off",
+      pin_label: "Pin to hotkey",
+      pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
+      looks_label: "Opinionated Looks",
+      looks_desc: "Rounded corners, hairline borders, soft shadow, vibrancy blur. Off = Omarchy defaults.",
+      lang_tip: "切換介面語言 · Switch UI language",
+      qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
+      qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
+      qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
+      qa_pick_l: "Picker", qa_pick_t: "Color picker",
+      qa_ocr_l: "OCR", qa_ocr_t: "Extract text (English + Chinese)",
+      qa_record_l: "Record", qa_record_t: "Start / stop screen recording"
+    },
+    zh: {
+      sec_keyboard: "鍵盤",
+      sec_aspect: "視窗比例",
+      sec_looks: "外觀",
+      sec_actions: "快捷動作",
+      swap_label: "左 Super／左 Alt 互換",
+      swap_desc: "只影響內置鍵盤；外接鍵盤保持原本設定。",
+      off: "關",
+      width: "闊", height: "高", apply: "套用",
+      active: "目前", custom: "自訂", offState: "關閉",
+      pin_label: "固定快捷鍵",
+      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次嘅比例（而唔係預設 1:1），隨時可以還原。",
+      looks_label: "Opinionated Looks",
+      looks_desc: "圓角、髮絲邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
+      lang_tip: "切換介面語言 · Switch UI language",
+      qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
+      qa_window_l: "視窗", qa_window_t: "截圖 — 揀選視窗",
+      qa_full_l: "全螢幕", qa_full_t: "截圖 — 成個螢幕",
+      qa_pick_l: "取色", qa_pick_t: "螢幕取色器",
+      qa_ocr_l: "OCR", qa_ocr_t: "OCR 文字辨識（中英）",
+      qa_record_l: "錄影", qa_record_t: "開始／停止螢幕錄影"
+    }
+  })
+
+  function tr(key) {
+    var table = strings[uiLang] || strings.en
+    return table[key] !== undefined ? table[key] : strings.en[key]
+  }
+
+  function toggleLang() {
+    setLang(uiLang === "en" ? "zh" : "en")
+  }
+
+  function setLang(lang) {
+    if (lang !== "en" && lang !== "zh") return
+    console.log("oma-swiss: ui lang", lang)
+    uiLang = lang
+    langFile.setText(lang)
   }
 
   // ---- shared queued hyprctl eval -------------------------------------------
@@ -133,7 +341,7 @@ BarWidget {
   // ---- actions ----------------------------------------------------------------
 
   function toggleSwap() {
-    console.log("hypr-toolbox: swap toggle, swapped =", swapped)
+    console.log("oma-swiss: swap toggle, swapped =", swapped)
     // Flip the icon right away; evalProc's exit re-reads the live state and
     // corrects it if the eval did not land.
     swapped = !swapped
@@ -149,12 +357,12 @@ BarWidget {
   function setAspect(w, h) {
     var wi = parseInt(w), hi = parseInt(h)
     if (!(wi > 0 && hi > 0)) {
-      console.warn("hypr-toolbox: aspect needs two positive integers, got", w, h)
+      console.warn("oma-swiss: aspect needs two positive integers, got", w, h)
       return
     }
     wi = Math.min(wi, 64)
     hi = Math.min(hi, 64)
-    console.log("hypr-toolbox: aspect set", wi + ":" + hi)
+    console.log("oma-swiss: aspect set", wi + ":" + hi)
     aspectW = wi
     aspectH = hi
     aspectFlagFile.setText(aspectFlagLua(wi, hi))
@@ -167,18 +375,25 @@ BarWidget {
   function aspectToggle() {
     if (aspectOn) clearAspect()
     else if (lastW > 0 && lastH > 0) setAspect(lastW, lastH)
-    else console.warn("hypr-toolbox: aspectToggle with no last ratio")
+    else console.warn("oma-swiss: aspectToggle with no last ratio")
   }
 
   function setPin(on) {
-    console.log("hypr-toolbox: pin hotkey", on ? "on" : "off")
+    console.log("oma-swiss: pin hotkey", on ? "on" : "off")
     pinHotkey = on
     if (on) writePinProc.running = true
     else removePinProc.running = true
   }
 
+  function setLook(on) {
+    console.log("oma-swiss: opinionated looks", on ? "on" : "off")
+    lookOn = on
+    if (on) writeLookProc.running = true
+    else removeLookProc.running = true
+  }
+
   function clearAspect() {
-    console.log("hypr-toolbox: aspect off")
+    console.log("oma-swiss: aspect off")
     aspectW = 0
     aspectH = 0
     removeAspectFlag.running = true
@@ -261,19 +476,23 @@ BarWidget {
   }
 
   // CLI access — the same paths a bar click drives:
-  //   omarchy-shell glasschan.hypr-toolbox toggle         swap on/off
-  //   omarchy-shell glasschan.hypr-toolbox aspect 21 10   set ratio
-  //   omarchy-shell glasschan.hypr-toolbox aspectOff      ratio off
-  //   omarchy-shell glasschan.hypr-toolbox aspectToggle   off <-> last ratio
-  //   omarchy-shell glasschan.hypr-toolbox pin            pin/unpin the hotkey
-  //   omarchy-shell glasschan.hypr-toolbox panel          open/close popup
+  //   omarchy-shell glasschan.oma-swiss toggle         swap on/off
+  //   omarchy-shell glasschan.oma-swiss aspect 21 10   set ratio
+  //   omarchy-shell glasschan.oma-swiss aspectOff      ratio off
+  //   omarchy-shell glasschan.oma-swiss aspectToggle   off <-> last ratio
+  //   omarchy-shell glasschan.oma-swiss pin            pin/unpin the hotkey
+  //   omarchy-shell glasschan.oma-swiss look           opinionated looks on/off
+  //   omarchy-shell glasschan.oma-swiss lang           toggle panel language EN/中
+  //   omarchy-shell glasschan.oma-swiss panel          open/close popup
   IpcHandler {
-    target: "glasschan.hypr-toolbox"
+    target: "glasschan.oma-swiss"
     function toggle(): void { root.toggleSwap() }
     function aspect(w: string, h: string): void { root.setAspect(w, h) }
     function aspectOff(): void { root.clearAspect() }
     function aspectToggle(): void { root.aspectToggle() }
     function pin(): void { root.setPin(!root.pinHotkey) }
+    function look(): void { root.setLook(!root.lookOn) }
+    function lang(): void { root.toggleLang() }
     function panel(): void { root.togglePanel() }
     function open(): void { root.open() }
     function close(): void { root.close() }
@@ -282,6 +501,8 @@ BarWidget {
         + " aspect=" + (root.aspectOn ? root.aspectW + ":" + root.aspectH : "off")
         + " last=" + (root.lastW > 0 ? root.lastW + ":" + root.lastH : "none")
         + " pin=" + (root.pinHotkey ? "on" : "off")
+        + " look=" + (root.lookOn ? "on" : "off")
+        + " lang=" + root.uiLang
     }
   }
 
@@ -289,19 +510,25 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "󰘮"
+    // Wash-dry-dip glyph, painted one step larger than the bar font so its
+    // thin laundry-symbol strokes read solid at bar scale.
+    text: "\uF2FE"
+    fontFamily: tablerFont.name
+    fontSize: Style.bar.iconCanvas
+    // Full-opacity at rest like every other bar icon; `active` still paints
+    // the urgent color while the swap is on. (The old dimmed-at-rest look
+    // came from the retired super-alt-swap plugin.)
     active: root.swapped
-    dimmed: !root.swapped
     tooltipText: root.swapped
-      ? "Hypr Toolbox · Super⇄Alt swapped (right-click restore, left-click tools)"
-      : "Hypr Toolbox · left-click tools, right-click toggles Super⇄Alt"
+      ? "OmaSwiss · Super⇄Alt swapped (right-click restore, left-click tools)"
+      : "OmaSwiss · left-click tools, right-click toggles Super⇄Alt"
     onPressed: function(b) {
       if (b === Qt.LeftButton) root.togglePanel()
       else if (b === Qt.RightButton) root.toggleSwap()
     }
   }
 
-  // A config reload reapplies or drops both tools depending on the flag
+  // A config reload reapplies or drops the toggles depending on the flag
   // files, and the UI must follow either way. Debounced: reloads can fire
   // several events back to back.
   Connections {
@@ -364,7 +591,7 @@ BarWidget {
     onExited: function(exitCode) {
       if (exitCode !== 0) {
         // hyprctl prints errors on stdout, so both streams are shown.
-        console.warn("hypr-toolbox: hyprctl eval failed (" + exitCode + "):",
+        console.warn("oma-swiss: hyprctl eval failed (" + exitCode + "):",
           (evalOut.text.trim() || evalErr.text.trim()))
       } else if (root.evalNotify !== "") {
         notifyProc.command = ["omarchy-notification-send", "-g",
@@ -467,14 +694,62 @@ BarWidget {
   Process {
     id: writePinProc
     command: ["sh", "-c",
-      "cat > '" + root.pinPath + "' <<'HYPRTOOLBOX_PIN_EOF'\n"
+      "cat > '" + root.pinPath + "' <<'OMASWISS_PIN_EOF'\n"
       + root.pinLua
-      + "HYPRTOOLBOX_PIN_EOF\nhyprctl reload"]
+      + "OMASWISS_PIN_EOF\nhyprctl reload"]
   }
 
   Process {
     id: removePinProc
     command: ["sh", "-c", "rm -f '" + root.pinPath + "' && hyprctl reload"]
+  }
+
+  // Look state mirrors the toggle file's existence, same as the pin file:
+  // watching covers our own shell writes and manual edits alike.
+  FileView {
+    id: lookFlagFile
+    path: root.lookFlagPath
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.lookOn = true
+    onLoadFailed: root.lookOn = false
+  }
+
+  // Same write-then-reload-in-one-command pattern as the pin file: the flag
+  // write and the reload that applies it must not race.
+  Process {
+    id: writeLookProc
+    command: ["sh", "-c",
+      "cat > '" + root.lookFlagPath + "' <<'OMASWISS_LOOK_EOF'\n"
+      + root.lookLua
+      + "OMASWISS_LOOK_EOF\nhyprctl reload"]
+  }
+
+  Process {
+    id: removeLookProc
+    command: ["sh", "-c", "rm -f '" + root.lookFlagPath + "' && hyprctl reload"]
+  }
+
+  // One-shot spawner for the quick actions. The actual tool runs detached
+  // (see launchDetached); this Process only fires the setsid launch line and
+  // exits immediately, so it is never busy and never kills a live tool.
+  Process {
+    id: actionProc
+  }
+
+  FileView {
+    id: langFile
+    path: root.langPath
+    atomicWrites: true
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      var v = (text() || "").trim()
+      root.uiLang = v === "zh" ? "zh" : "en"
+    }
+    onLoadFailed: root.uiLang = "en"
   }
 
   Process {

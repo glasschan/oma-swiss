@@ -80,44 +80,55 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Purpose
 
-- Source repo of the Omarchy shell plugin `glasschan.hypr-toolbox` (marketplace repo name: `omarchy-hypr-toolbox`). One bar icon, two Hyprland tools: laptop Super⇄Alt swap and single-window aspect ratio (presets + custom). Successor of `glasschan.super-alt-swap` (that repo is deprecated).
-- Deployed copy lives in `~/.config/omarchy/plugins/glasschan.hypr-toolbox/`; after editing files there, sync changes back to this repo.
+- Source repo of the Omarchy shell plugin `glasschan.oma-swiss` (display name OmaSwiss; GitHub repo `glasschan/oma-swiss`). One bar icon, four Hyprland tools: laptop Super⇄Alt swap, single-window aspect ratio (presets + custom), Opinionated Looks toggle, and quick capture actions (screenshots, color picker, OCR, recording). Successor of `glasschan.super-alt-swap` (that repo is deprecated); renamed from `glasschan.hypr-toolbox` on 2026-08-24 before any publication — marketplace IDs are permanent once listed.
+- Target marketplace: omarchyplugins.com (registry `HANCORE-linux/omarchy-plugin-marketplace`; submission via its GitHub issue form). Rules as of 2026-08-24: no repo-name prefix required; plugin id must be globally unique and outside the reserved `omarchy.*` namespace; README must carry install and removal instructions plus a dependencies section; preview image optional. Intended submission: category `Widgets`, tags `bar`, `hyprland`, `quickshell`.
+- The plugin's founding tenet: **ultra-low CPU and RAM usage**. Idle cost must stay at "one bar icon plus a few file watchers" — every feature added to this repo must preserve that. The Work Guidance resource floor is how this tenet is enforced.
+- Deployed copy lives in `~/.config/omarchy/plugins/glasschan.oma-swiss/`; after editing files there, sync changes back to this repo.
 
 ## Ownership
 
-- Root-owned files: `README.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `preview.png`, and root-level project documentation.
+- Root-owned files: `README.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `tabler-icons.ttf` (subset), `preview.png`, `.github/workflows/*`, `scripts/check-submission.sh`, `.gitignore`, and root-level project documentation.
 
 ## Local Contracts
 
-- Plugin id `glasschan.hypr-toolbox`, kind `bar-widget`, single entry point `BarWidget.qml`.
+- Plugin id `glasschan.oma-swiss`, kind `bar-widget`, single entry point `BarWidget.qml`.
 - `BarWidget.qml` owns all state and actions; `ToolPanel.qml` is a pure view injected with `hostWidget`. No state may live in the panel.
 - Flag files are the source of truth and must stay byte-compatible:
   - Swap: `~/.local/state/omarchy/toggles/hypr/super-alt-swap.lua` (same path and Lua content as the retired super-alt-swap plugin).
   - Aspect: `~/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua` — written directly with the chosen ratio; never call `omarchy-hyprland-toggle` for it (its "on" copies stock 1:1).
-- Custom-ratio memory: `~/.local/state/glasschan.hypr-toolbox/last-aspect`, plain `"w h"` text — the LAST ratio set (preset or custom); drives panel prefill and `aspectToggle`.
-- Hotkey pin: `~/.local/state/omarchy/toggles/hypr/hypr-toolbox-hotkey.lua` — exists = pinned. Its static Lua does `hl.unbind("SUPER + CTRL + BACKSPACE")` + `o.bind(..., "omarchy-shell glasschan.hypr-toolbox aspectToggle")`; toggles load after user bindings, so the pinned bind wins while the file exists and removal restores whatever was bound before (stock or the user's own override). The write and the activating `hyprctl reload` MUST stay one shell command (FileView.setText is async — a separate reload Process would race).
-- IPC surface (CLI = `omarchy-shell glasschan.hypr-toolbox <fn>`, exact function names, no hyphen mapping): `toggle` (swap), `aspect w h`, `aspectOff`, `aspectToggle`, `pin`, `panel`, `open`, `close`, `status`.
+  - Looks: `~/.local/state/omarchy/toggles/hypr/opinionated-looks.lua` — exists = Opinionated Looks on. Content is static-only `hl.config` (rounding/borders/shadow/blur; `lookLua` in BarWidget.qml carries the user's live tuning: border 5, rounding 6). Animations are deliberately NOT overridden — a former macSpring `hl.curve`/`hl.animation` set was removed on 2026-08-24 as indistinguishable from stock; do not reintroduce animation overrides without the user asking. A `setup-looknfeel.sh`-style marker block in `~/.config/hypr/looknfeel.lua` must not coexist with this flag: with the flag absent the block would keep the look applied and break the off state. Ownership migrated to the flag file on 2026-08-24.
+- Custom-ratio memory: `~/.local/state/glasschan.oma-swiss/last-aspect`, plain `"w h"` text — the LAST ratio set (preset or custom); drives panel prefill and `aspectToggle`.
+- UI language: `~/.local/state/glasschan.oma-swiss/lang`, `"en"` or `"zh"`. All panel strings live in the `strings` table in BarWidget.qml and resolve through `tr()` — the panel stays a pure view; adding a string means adding it to every language block.
+- Hotkey pin: `~/.local/state/omarchy/toggles/hypr/oma-swiss-hotkey.lua` — exists = pinned. Its static Lua does `hl.unbind("SUPER + CTRL + BACKSPACE")` + `o.bind(..., "omarchy-shell glasschan.oma-swiss aspectToggle")`; toggles load after user bindings, so the pinned bind wins while the file exists and removal restores whatever was bound before (stock or the user's own override). The write and the activating `hyprctl reload` MUST stay one shell command (FileView.setText is async — a separate reload Process would race).
+- IPC surface (CLI = `omarchy-shell glasschan.oma-swiss <fn>`, exact function names, no hyphen mapping): `toggle` (swap), `aspect w h`, `aspectOff`, `aspectToggle`, `pin`, `look`, `lang`, `panel`, `open`, `close`, `status`. Quick actions have no IPC — they are panel buttons only (they close the panel on fire).
 - Bar interactions: left-click opens the popup, right-click toggles the swap directly.
 
 ## Work Guidance
 
 - Resource floor is a hard design rule: no timers (except the 100 ms configreload debounce), no polling, no background services. File watching via FileView `watchChanges` only; hyprctl work through the single queued-eval Process so rapid clicks land in order.
+- Quick actions are the one sanctioned exception to the queued-eval rule: stateless one-shot launches. They MUST go through `launchDetached` (`setsid -f ... </dev/null >/dev/null 2>&1`): quickshell Process children inherit piped stdio, and tools that read stdin block forever — slurp reads preselections from stdin before mapping its overlay, which was the OCR hang that stacked every later capture tool behind a dead grab. Detached also means no tool is ever killed by an actionProc restart or a shell restart. The panel closes when an action fires (selection overlays need a clear screen). The record action chooses start vs stop with a click-time `pgrep '^gpu-screen-recorder'` — a single check, never a loop.
+- All plugin icons (bar + panel) are Tabler Icons (MIT, https://tabler.io/icons) rendered from the bundled `tabler-icons.ttf` — a 7 KB subset (upstream webfont is 2.8 MB) loaded once via FontLoader; controls must set `fontFamily` to `iconFont`, because Tabler codepoints collide with Nerd Fonts' codicons range. Adding/changing an icon: look up the codepoint in @tabler/icons-webfont's `tabler-icons.css`, add it to the subset command documented in BarWidget.qml, rebuild with `fontTools.subset`, and redeploy the font. The 中/EN language button is plain text (system font fallback) and notification glyphs stay Nerd Font — the notification daemon renders with system fonts and cannot see the plugin's FontLoader. Custom SVG bar icons were tried and rejected (optical misalignment vs. font glyphs); keep the bar icon a font glyph.
 - After any `rm` of a watched FileView path, call `reload()` in the Process `onExited` — FileView caches content and a later `setText()` of unchanged content silently no-ops.
 - hyprctl eval prints errors on stdout and exits non-zero on Lua errors; check both streams.
 - The popup panel loads lazily (`Loader.active: false` until first open); keep it that way.
+- CI (`.github/workflows/ci.yml`): `validate` runs Omarchy's own `omarchy-plugin-validate`, fetched fresh from `basecamp/omarchy` branch `quattro` (`bin/omarchy-plugin-validate`) — the moving pin is intentional, so Omarchy manifest-schema drift fails CI instead of silently accepting a manifest the shell would reject. It also runs `scripts/check-submission.sh` (marketplace SUBMISSION.md rules: README install+removal+deps, LICENSE, preview ≤50 MB/40 MP). Release (`.github/workflows/release.yml`, on tag `v*`): tag must equal `manifest.json` `version`, then packages the plugin payload zip + sha256 and publishes the GitHub Release.
+- Preview retakes: the panel is ~`Style.space(330)`×`Style.space(600)` anchored top-right under the bar icon (bar is 26 px). `hyprctl layers` is useless for geometry here (`omarchy-keyboard-panel` is a full-screen catcher surface), and the dark wallpaper defeats color matching — take a matched pair of screenshots (panel closed / open, e.g. `omarchy-capture-screenshot`), diff them (>12/channel), and the changed-pixel bbox is the panel border ring; crop it with a ~14 px margin starting below y=26. Current `preview.png` (352×611) was taken this way on 2026-08-24 from the live v0.3.0 panel.
 
 ## Verification
 
 - `omarchy plugin validate <repo root>` must pass before deploying.
-- Deploy loop: sync `BarWidget.qml`, `ToolPanel.qml`, `manifest.json`, `preview.png`, and docs to `~/.config/omarchy/plugins/glasschan.hypr-toolbox/`, ensure `~/.config/omarchy/shell.json` bar layout has `{"id": "glasschan.hypr-toolbox"}` (replacing `glasschan.super-alt-swap` if migrating), then `omarchy restart shell` (hot-reload can keep serving stale compiled QML), then E2E:
-  - `omarchy-shell glasschan.hypr-toolbox toggle` — `hyprctl -j devices` shows `altwin:swap_lalt_lwin` added/removed on `at-translated-set-2-keyboard`; swap flag file appears/disappears
-  - `omarchy-shell glasschan.hypr-toolbox aspect 16 10` — `hyprctl getoption layout:single_window_aspect_ratio` returns `[16, 10]`; flag file content has `{ 16, 10 }`
-  - `omarchy-shell glasschan.hypr-toolbox aspectOff` — getoption back to `[0, 0]`; flag file absent
-  - `omarchy-shell glasschan.hypr-toolbox status` reports all three states correctly
+- Deploy loop: sync `BarWidget.qml`, `ToolPanel.qml`, `manifest.json`, `tabler-icons.ttf`, `preview.png`, and docs to `~/.config/omarchy/plugins/glasschan.oma-swiss/`, ensure `~/.config/omarchy/shell.json` bar layout has `{"id": "glasschan.oma-swiss"}` (replacing `glasschan.super-alt-swap` if migrating), then `omarchy restart shell` (hot-reload can keep serving stale compiled QML), then E2E:
+  - `omarchy-shell glasschan.oma-swiss toggle` — `hyprctl -j devices` shows `altwin:swap_lalt_lwin` added/removed on `at-translated-set-2-keyboard`; swap flag file appears/disappears
+  - `omarchy-shell glasschan.oma-swiss aspect 16 10` — `hyprctl getoption layout:single_window_aspect_ratio` returns `[16, 10]`; flag file content has `{ 16, 10 }`
+  - `omarchy-shell glasschan.oma-swiss aspectOff` — getoption back to `[0, 0]`; flag file absent
+  - `omarchy-shell glasschan.oma-swiss status` reports all three states correctly
   - rapid consecutive CLI calls land in order (queued eval)
-  - pin: `omarchy-shell glasschan.hypr-toolbox pin` → pin file exists, `hyprctl binds` shows "Toggle single-window aspect (hypr-toolbox)" and the previous BACKSPACE bind is gone; `aspectToggle` cycles off ⇄ last ratio and panel ratio changes move the target; `pin` again → pin file absent and the previous binding is back
+  - pin: `omarchy-shell glasschan.oma-swiss pin` → pin file exists, `hyprctl binds` shows "Toggle single-window aspect (oma-swiss)" and the previous BACKSPACE bind is gone; `aspectToggle` cycles off ⇄ last ratio and panel ratio changes move the target; `pin` again → pin file absent and the previous binding is back
+  - `omarchy-shell glasschan.oma-swiss look` — with looks on: `hyprctl getoption decoration:rounding` returns 6 and `general:border_size` returns 5, flag file exists; off: rounding 0 / border 2 (Omarchy defaults), flag file absent; `hyprctl configerrors` stays empty both ways
+  - `omarchy-shell glasschan.oma-swiss lang` — `~/.local/state/glasschan.oma-swiss/lang` flips between `en`/`zh`, `status` reports `lang=` accordingly, and the panel re-renders in the new language
+  - quick actions: every action spawns detached — no capture-tool children remain under the quickshell process (`pgrep -af slurp` clean after the tool exits); record button start/stop via `pgrep -f '^gpu-screen-recorder'`; `omarchy-capture-screenshot region` etc. exist in PATH (`command -v`); interactive OCR/screenshot selection needs one manual click-through test (slurp overlay must appear and be draggable — the stdin-pipe regression this guards against)
   - external writer check: run the stock `omarchy-hyprland-window-single-square-aspect-toggle` once; `status` must report `aspect=1:1` (watcher picked it up), then restore
-- End of test session: leave swap off; restore the user's aspect ratio (currently 4:3) unless asked otherwise.
+- End of test session: leave swap off; restore the user's aspect ratio (currently 4:3) unless asked otherwise; leave Opinionated Looks as the user's current visual state (on, via the flag file).
 
 ## Child DOX Index
 
