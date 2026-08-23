@@ -258,6 +258,7 @@ BarWidget {
       looks_label: "Opinionated Looks",
       looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
       lang_tip: "切換介面語言 · Switch UI language",
+      upd_tip: "v%1 is out — click for release notes",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
@@ -280,6 +281,7 @@ BarWidget {
       looks_label: "Opinionated Looks",
       looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
       lang_tip: "切換介面語言 · Switch UI language",
+      upd_tip: "新版本 v%1 可用，點擊查看更新內容",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
       qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
@@ -303,6 +305,42 @@ BarWidget {
     console.log("oma-swiss: ui lang", lang)
     uiLang = lang
     langFile.setText(lang)
+  }
+
+  // ---- update indicator --------------------------------------------------------
+
+  // Upgrade badge in the panel header. Fully event-driven: the only network
+  // touch is one GitHub-API call when the panel opens with a cache older than
+  // 24 h — no timers, no polling, and nothing at all while the panel stays
+  // closed (the badge lives in the lazily-loaded panel). Cache line:
+  // "<epoch-ms> <version>"; empty version = last check failed.
+  readonly property string releasesUrl: "https://github.com/glasschan/oma-swiss/releases"
+  readonly property string updateCachePath: stateDir + "/update-check"
+  property string localVersion: ""
+  property string latestVersion: ""
+  property real updateCheckedAt: 0
+
+  readonly property bool updateAvailable: semverGreater(latestVersion, localVersion)
+
+  function semverGreater(a, b) {
+    var pa = String(a).replace(/^v/, "").split(".")
+    var pb = String(b).replace(/^v/, "").split(".")
+    for (var i = 0; i < 3; i++) {
+      var va = parseInt(pa[i]) || 0
+      var vb = parseInt(pb[i]) || 0
+      if (va !== vb) return va > vb
+    }
+    return false
+  }
+
+  function maybeCheckUpdate() {
+    if (updateProc.running) return
+    if (Date.now() - updateCheckedAt < 24 * 3600 * 1000) return
+    updateProc.running = true
+  }
+
+  function openReleasesPage() {
+    launchDetached(["xdg-open", releasesUrl])
   }
 
   // ---- shared queued hyprctl eval -------------------------------------------
@@ -443,6 +481,7 @@ BarWidget {
     panelWanted = true
     panelLoader.active = true
     if (panelLoader.item) panelLoader.item.open()
+    maybeCheckUpdate()
   }
   function close() {
     panelWanted = false
@@ -505,6 +544,7 @@ BarWidget {
         + " pin=" + (root.pinHotkey ? "on" : "off")
         + " look=" + (root.lookOn ? "on" : "off")
         + " lang=" + root.uiLang
+        + " update=" + (root.updateAvailable ? root.latestVersion : "none")
     }
   }
 
@@ -752,6 +792,53 @@ BarWidget {
       root.uiLang = v === "zh" ? "zh" : "en"
     }
     onLoadFailed: root.uiLang = "en"
+  }
+
+  // Local version from the co-located manifest — one static read, no watch.
+  FileView {
+    id: manifestFile
+    path: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
+    printErrors: false
+    onLoaded: {
+      var m = /"version"\s*:\s*"([^"]+)"/.exec(text() || "")
+      if (m) root.localVersion = m[1]
+    }
+  }
+
+  // Update cache, watched so every monitor's badge agrees (same pattern as
+  // the lang file). A stale entry still shows its cached version; staleness
+  // only gates the next network check.
+  FileView {
+    id: updateCacheFile
+    path: root.updateCachePath
+    atomicWrites: true
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      var m = /^(\d+)(?:\s+(\S*))?/.exec((text() || "").trim())
+      if (!m) return
+      root.updateCheckedAt = parseInt(m[1]) || 0
+      root.latestVersion = m[2] || ""
+    }
+  }
+
+  // One-shot release check, fired only by maybeCheckUpdate (panel open +
+  // stale cache). The result — success or failure — restamps the cache, so
+  // the worst case is one bounded (--max-time) request per day.
+  Process {
+    id: updateProc
+    command: ["sh", "-c",
+      "curl -fsS --max-time 5 https://api.github.com/repos/glasschan/oma-swiss/releases/latest"]
+    stdout: StdioCollector {
+      id: updateOut
+      waitForEnd: true
+    }
+    stderr: StdioCollector { waitForEnd: true }
+    onExited: {
+      var m = /"tag_name"\s*:\s*"v?([^"]+)"/.exec(updateOut.text || "")
+      updateCacheFile.setText(Date.now() + " " + (m ? m[1] : ""))
+    }
   }
 
   Process {
