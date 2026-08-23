@@ -163,11 +163,11 @@ BarWidget {
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 11 codepoints
-  // this plugin uses (6 KB). Rebuild it from the upstream webfont when an icon
+  // so the bundled tabler-icons.ttf is a subset holding only the 8 codepoints
+  // this plugin uses (4 KB). Rebuild it from the upstream webfont when an icon
   // changes:
   //   python -m fontTools.subset tabler-icons.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57 \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through

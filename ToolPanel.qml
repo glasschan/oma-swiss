@@ -57,14 +57,16 @@ Panel {
 
           // Upgrade badge: appears left of the language switch only when a
           // newer GitHub release is known (state lives on the host widget).
-          // Plain "↑" in the system font — no icon-subset change needed.
+          // Tabler refresh-alert, rendered through iconFont like every other
+          // plugin icon (codepoints collide with Nerd Fonts' codicons).
           PanelActionButton {
             id: updateButton
             anchors.right: langButton.left
             anchors.rightMargin: Style.spacing.controlGap
             anchors.verticalCenter: parent.verticalCenter
             visible: root.tool && root.tool.updateAvailable
-            iconText: "↑"
+            iconText: "\uED57"
+            fontFamily: root.tool ? root.tool.iconFont : ""
             foreground: Color.urgent
             hoverColor: Color.urgent
             tooltipText: root.tool && root.tool.updateAvailable
