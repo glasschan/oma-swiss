@@ -42,6 +42,8 @@ for path in files:
                 fails.append(f"{where}: notification send without deadline")
             if "curl " in line and "max-time" not in line:
                 fails.append(f"{where}: curl without --max-time")
+            if path == "ToolPanel.qml" and re.search(r"\broot\.(toggleSwap|setAspect|clearAspect|aspectToggle|setPin|setLook|toggleLang|setLang|runQuickAction|handleUpdateClick)\(", line):
+                fails.append(f"{where}: host function called on the panel's root — the panel is a pure view, host calls go through root.tool (TypeError regression of v0.3.2)")
         if re.search("[嘅揀]|唔係|成個|闊", line):
             fails.append(f"{where}: Cantonese marker in shipped Chinese (must be 書面語)")
 

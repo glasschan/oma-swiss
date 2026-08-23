@@ -131,7 +131,7 @@ Panel {
           label: root.tool ? root.tool.tr("swap_label") : ""
           description: root.tool ? root.tool.tr("swap_desc") : ""
           checked: root.tool && root.tool.swapped
-          onClicked: if (root.tool) root.toggleSwap()
+          onClicked: if (root.tool) root.tool.toggleSwap()
         }
 
         PanelSeparator {}
