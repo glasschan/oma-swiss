@@ -1,5 +1,7 @@
 # OmaSwiss
 
+English · [繁體中文](README.zh-Hant.md)
+
 [![CI](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml/badge.svg)](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml)
 
 ![OmaSwiss — one bar icon, four Hyprland tools](preview.png)
