@@ -98,17 +98,26 @@ BarWidget {
   // ---- shared queued hyprctl eval -------------------------------------------
 
   // One Process, one slot: rapid clicks queue instead of dropping, so every
-  // action lands in order.
+  // action lands in order. An eval may carry a notification (message +
+  // glyph) that is sent only if the eval lands.
   property string pendingExpr: ""
   property bool evalPending: false
+  property string evalNotify: ""
+  property string evalNotifyGlyph: ""
+  property string queuedNotify: ""
+  property string queuedNotifyGlyph: ""
 
-  function queueEval(expr) {
+  function queueEval(expr, notify, glyph) {
     if (evalProc.running) {
       pendingExpr = expr
       evalPending = true
+      queuedNotify = notify || ""
+      queuedNotifyGlyph = glyph || ""
       return
     }
     evalPending = false
+    evalNotify = notify || ""
+    evalNotifyGlyph = glyph || ""
     evalProc.command = ["hyprctl", "eval", expr]
     evalProc.running = true
   }
@@ -149,7 +158,7 @@ BarWidget {
     aspectW = wi
     aspectH = hi
     aspectFlagFile.setText(aspectFlagLua(wi, hi))
-    queueEval(evalAspect(wi, hi))
+    queueEval(evalAspect(wi, hi), "Single-window aspect: " + wi + ":" + hi, "󰘮")
     saveLast(wi, hi)
   }
 
@@ -173,7 +182,7 @@ BarWidget {
     aspectW = 0
     aspectH = 0
     removeAspectFlag.running = true
-    queueEval(evalAspect(0, 0))
+    queueEval(evalAspect(0, 0), "Single-window aspect: off", "󰘮")
   }
 
   function saveLast(w, h) {
@@ -280,7 +289,7 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "󱕉"
+    text: "󰘮"
     active: root.swapped
     dimmed: !root.swapped
     tooltipText: root.swapped
@@ -357,17 +366,32 @@ BarWidget {
         // hyprctl prints errors on stdout, so both streams are shown.
         console.warn("hypr-toolbox: hyprctl eval failed (" + exitCode + "):",
           (evalOut.text.trim() || evalErr.text.trim()))
+      } else if (root.evalNotify !== "") {
+        notifyProc.command = ["omarchy-notification-send", "-g",
+          root.evalNotifyGlyph, root.evalNotify]
+        notifyProc.running = true
       }
+      root.evalNotify = ""
+      root.evalNotifyGlyph = ""
       if (root.evalPending) {
         var expr = root.pendingExpr
         root.evalPending = false
         root.pendingExpr = ""
+        root.evalNotify = root.queuedNotify
+        root.evalNotifyGlyph = root.queuedNotifyGlyph
+        root.queuedNotify = ""
+        root.queuedNotifyGlyph = ""
         evalProc.command = ["hyprctl", "eval", expr]
         evalProc.running = true
       } else {
         root.broadcast("refresh")
       }
     }
+  }
+
+  // Fires the completion notification for an eval that landed.
+  Process {
+    id: notifyProc
   }
 
   FileView {

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "glasschan.hypr-toolbox",
   "name": "Hypr Toolbox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "glasschan",
   "license": "MIT",
   "description": "Minimal toolbox bar widget: laptop Super/Alt swap and single-window aspect ratio with presets and custom ratios",

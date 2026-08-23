@@ -7,7 +7,7 @@ A minimal-resource Omarchy bar plugin combining two Hyprland toggles behind one 
 
 ## Bar usage
 
-- **Left-click** the 󱕉 icon: opens the toolbox popup.
+- **Left-click** the 󰘮 icon: opens the toolbox popup.
 - **Right-click**: instant Super⇄Alt toggle, the same one-click action the old plugin had.
 
 The aspect tool writes the stock toggle flag
