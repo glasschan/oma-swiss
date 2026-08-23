@@ -205,6 +205,16 @@ BarWidget {
     return "'" + String(arg).replace(/'/g, "'\\''") + "'"
   }
 
+  // Lua string literal for embedding flag paths and flag content inside
+  // hyprctl eval expressions — the eval sandbox carries io/os (verified
+  // 2026-08-24), so flag mutations ride the eval queue and can never race it.
+  function luaString(s) {
+    return '"' + String(s)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, "\\n") + '"'
+  }
+
   // Quick actions must launch the way Hyprland keybindings do: detached,
   // with stdio pointed at /dev/null. A quickshell Process hands its child
   // piped stdio, and slurp reads preselections from stdin before it ever
@@ -352,7 +362,7 @@ BarWidget {
       + 'if [ -d "$d/.git" ]; then '
       + 'out=$(omarchy plugin update glasschan.oma-swiss --yes 2>&1) || true; '
       + 'printf %s "$out" | grep -q "^Updated" && omarchy-restart-shell; '
-      + 'else xdg-open ' + releasesUrl + '; fi'])
+      + 'else xdg-open ' + shellQuote(releasesUrl) + '; fi'])
   }
 
   // ---- shared queued hyprctl eval -------------------------------------------
@@ -382,12 +392,26 @@ BarWidget {
     evalProc.running = true
   }
 
-  function evalSwap(options) {
-    return 'hl.device({ name = "' + keyboardName + '", kb_options = "' + options + '" })'
+  // Flag mutations live INSIDE the eval expressions: the swap/aspect flags
+  // used to be written by a separate async FileView setText / rm Process,
+  // and rapid toggles could leave the flag file and live state disagreeing
+  // until the next config reload reasserted the stale side (flag = truth).
+  // Serializing through the single eval slot makes file and compositor move
+  // as one, and a rejected eval writes nothing — the consistent failure mode.
+  function evalSwap(on, options) {
+    var file = on
+      ? "local f = io.open(" + luaString(swapFlagPath) + ', "w"); '
+        + "f:write(" + luaString(swapToggleLua) + "); f:close(); "
+      : "os.remove(" + luaString(swapFlagPath) + "); "
+    return file + 'hl.device({ name = "' + keyboardName + '", kb_options = "' + options + '" })'
   }
 
   function evalAspect(w, h) {
-    return "hl.config({ layout = { single_window_aspect_ratio = { " + w + ", " + h + " } } })"
+    var file = w > 0 && h > 0
+      ? "local f = io.open(" + luaString(aspectFlagPath) + ', "w"); '
+        + "f:write(" + luaString(aspectFlagLua(w, h)) + "); f:close(); "
+      : "os.remove(" + luaString(aspectFlagPath) + "); "
+    return file + "hl.config({ layout = { single_window_aspect_ratio = { " + w + ", " + h + " } } })"
   }
 
   // ---- actions ----------------------------------------------------------------
@@ -398,11 +422,9 @@ BarWidget {
     // corrects it if the eval did not land.
     swapped = !swapped
     if (swapped) {
-      swapFlagFile.setText(swapToggleLua)
-      queueEval(evalSwap(baseOptions === "" ? swapOption : baseOptions + "," + swapOption))
+      queueEval(evalSwap(true, baseOptions === "" ? swapOption : baseOptions + "," + swapOption))
     } else {
-      removeSwapFlag.running = true
-      queueEval(evalSwap(baseOptions))
+      queueEval(evalSwap(false, baseOptions))
     }
   }
 
@@ -417,7 +439,6 @@ BarWidget {
     console.log("oma-swiss: aspect set", wi + ":" + hi)
     aspectW = wi
     aspectH = hi
-    aspectFlagFile.setText(aspectFlagLua(wi, hi))
     queueEval(evalAspect(wi, hi), "Single-window aspect: " + wi + ":" + hi, "󰘮")
     saveLast(wi, hi)
   }
@@ -448,7 +469,6 @@ BarWidget {
     console.log("oma-swiss: aspect off")
     aspectW = 0
     aspectH = 0
-    removeAspectFlag.running = true
     queueEval(evalAspect(0, 0), "Single-window aspect: off", "󰘮")
   }
 
@@ -468,8 +488,8 @@ BarWidget {
   function parseAspectFlag(text) {
     var m = /single_window_aspect_ratio\s*=\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}/.exec(text || "")
     if (m) {
-      aspectW = parseInt(m[1]) || 0
-      aspectH = parseInt(m[2]) || 0
+      aspectW = Math.min(parseInt(m[1]) || 0, 64)
+      aspectH = Math.min(parseInt(m[2]) || 0, 64)
     } else {
       aspectW = 0
       aspectH = 0
@@ -650,7 +670,7 @@ BarWidget {
         console.warn("oma-swiss: hyprctl eval failed (" + exitCode + "):",
           (evalOut.text.trim() || evalErr.text.trim()))
       } else if (root.evalNotify !== "") {
-        notifyProc.command = ["omarchy-notification-send", "-g",
+        notifyProc.command = ["timeout", "10", "omarchy-notification-send", "-g",
           root.evalNotifyGlyph, root.evalNotify]
         notifyProc.running = true
       }
@@ -677,24 +697,6 @@ BarWidget {
     id: notifyProc
   }
 
-  FileView {
-    id: swapFlagFile
-    path: root.swapFlagPath
-    atomicWrites: true
-    printErrors: false
-  }
-
-  Process {
-    id: removeSwapFlag
-    command: ["rm", "-f", root.swapFlagPath]
-    onExited: {
-      // FileView caches content and skips no-change writes. After rm the
-      // cache is stale, so re-sync it or the next setText() silently no-ops
-      // and the swap would not survive the next reload.
-      swapFlagFile.reload()
-    }
-  }
-
   // Aspect flag: watched so external writers (the stock
   // SUPER+CTRL+BACKSPACE toggle writes 1:1 here) are reflected without
   // polling. Parse on load completion only — reload() transiently clears
@@ -711,12 +713,6 @@ BarWidget {
     onLoadFailed: root.parseAspectFlag("")
   }
 
-  Process {
-    id: removeAspectFlag
-    command: ["rm", "-f", root.aspectFlagPath]
-    onExited: { aspectFlagFile.reload() }
-  }
-
   FileView {
     id: lastFile
     path: root.lastPath
@@ -725,8 +721,8 @@ BarWidget {
     onLoaded: {
       var m = /^(\d+)\s+(\d+)$/.exec(text() || "")
       if (m) {
-        root.lastW = parseInt(m[1]) || 0
-        root.lastH = parseInt(m[2]) || 0
+        root.lastW = Math.min(parseInt(m[1]) || 0, 64)
+        root.lastH = Math.min(parseInt(m[2]) || 0, 64)
       }
     }
   }
@@ -754,13 +750,13 @@ BarWidget {
     command: ["sh", "-c",
       "cat > " + shellQuote(root.pinPath) + " <<'OMASWISS_PIN_EOF'\n"
       + root.pinLua
-      + "OMASWISS_PIN_EOF\nhyprctl reload"]
+      + "OMASWISS_PIN_EOF\ntimeout 10 hyprctl reload"]
   }
 
   Process {
     id: removePinProc
     command: ["sh", "-c",
-      "rm -f " + shellQuote(root.pinPath) + " && hyprctl reload"]
+      "rm -f " + shellQuote(root.pinPath) + " && timeout 10 hyprctl reload"]
   }
 
   // Look state mirrors the toggle file's existence, same as the pin file:
@@ -783,13 +779,13 @@ BarWidget {
     command: ["sh", "-c",
       "cat > " + shellQuote(root.lookFlagPath) + " <<'OMASWISS_LOOK_EOF'\n"
       + root.lookLua
-      + "OMASWISS_LOOK_EOF\nhyprctl reload"]
+      + "OMASWISS_LOOK_EOF\ntimeout 10 hyprctl reload"]
   }
 
   Process {
     id: removeLookProc
     command: ["sh", "-c",
-      "rm -f " + shellQuote(root.lookFlagPath) + " && hyprctl reload"]
+      "rm -f " + shellQuote(root.lookFlagPath) + " && timeout 10 hyprctl reload"]
   }
 
   // One-shot spawner for the quick actions. The actual tool runs detached
@@ -843,18 +839,24 @@ BarWidget {
   }
 
   // One-shot release check, fired only by maybeCheckUpdate (panel open +
-  // stale cache). The result — success or failure — restamps the cache, so
-  // the worst case is one bounded (--max-time) request per day.
+  // stale cache). The flock makes a second monitor's instance bow out
+  // instead of racing a duplicate fetch and a blank cache stamp. The
+  // result — success or curl failure — restamps the cache, so the worst
+  // case is one bounded (--max-time) request per day.
   Process {
     id: updateProc
     command: ["sh", "-c",
-      "curl -fsS --max-time 5 https://api.github.com/repos/glasschan/oma-swiss/releases/latest"]
+      'exec 9>"$1.lock"; flock -n 9 || exit 42; '
+      + "curl -fsS --max-time 5 https://api.github.com/repos/glasschan/oma-swiss/releases/latest",
+      "sh", root.updateCachePath]
     stdout: StdioCollector {
       id: updateOut
       waitForEnd: true
     }
     stderr: StdioCollector { waitForEnd: true }
-    onExited: {
+    onExited: function(exitCode) {
+      // 42 = another instance holds the lock and owns the fetch + stamp.
+      if (exitCode === 42) return
       var m = /"tag_name"\s*:\s*"v?([^"]+)"/.exec(updateOut.text || "")
       updateCacheFile.setText(Date.now() + " " + (m ? m[1] : ""))
     }
