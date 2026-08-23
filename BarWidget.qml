@@ -104,7 +104,8 @@ BarWidget {
   // overrides looknfeel.lua); absent = Omarchy defaults. Static looks only —
   // no animation overrides: the former macSpring set was removed because it
   // was indistinguishable from stock Omarchy animations. Values are the
-  // user's live tuning (border 5, rounding 6).
+  // user's live tuning (border 5, rounding 6, gradient rim bright-on-top,
+  // blur size 6 / vibrancy 0.20, shadow 20/4/rgba(00000028)).
   readonly property string lookFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/opinionated-looks.lua"
   property bool lookOn: false
 
@@ -117,8 +118,8 @@ BarWidget {
     "  general = {",
     "    border_size = 5,",
     "    col = {",
-    '      active_border = "rgba(ffffff18)",',
-    '      inactive_border = "rgba(ffffff0d)",',
+    '      active_border = { colors = { "rgba(ffffff30)", "rgba(ffffff08)" }, angle = 90 },',
+    '      inactive_border = { colors = { "rgba(ffffff18)", "rgba(ffffff06)" }, angle = 90 },',
     "    },",
     "    resize_on_border = true,",
     "  },",
@@ -130,16 +131,17 @@ BarWidget {
     "      enabled = true,",
     "      range = 20,",
     "      render_power = 4,",
-    '      color = "rgba(00000050)",',
+    '      color = "rgba(00000028)",',
     "    },",
     "    blur = {",
     "      enabled = true,",
-    "      size = 4,",
+    "      size = 6,",
     "      passes = 3,",
     "      special = true,",
     "      brightness = 0.90,",
     "      contrast = 0.85,",
-    "      vibrancy = 0.10,",
+    "      vibrancy = 0.20,",
+    "      vibrancy_darkness = 0.1,",
     "      noise = 0.0,",
     "    },",
     "    dim_inactive = false,",
@@ -151,8 +153,8 @@ BarWidget {
     "hl.config({",
     "  group = {",
     "    col = {",
-    '      border_active = "rgba(ffffff18)",',
-    '      border_inactive = "rgba(ffffff0d)",',
+    '      border_active = { colors = { "rgba(ffffff30)", "rgba(ffffff08)" }, angle = 90 },',
+    '      border_inactive = { colors = { "rgba(ffffff18)", "rgba(ffffff06)" }, angle = 90 },',
     "    },",
     "  },",
     "})"
