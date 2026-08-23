@@ -1,5 +1,7 @@
 # OmaSwiss
 
+English · [繁體中文](README.zh-Hant.md)
+
 [![CI](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml/badge.svg)](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml)
 
 ![OmaSwiss — one bar icon, four Hyprland tools](preview.png)
@@ -21,6 +23,9 @@ that costs nothing while you're not using it.
   `omarchy update` — and the Omarchy menu keeps working alongside.
 - **中 / EN.** The whole panel switches between English and 繁體中文 with
   one button.
+- **Told when an update lands.** A badge on the panel marks new GitHub
+  releases; one click updates the plugin on git installs. The check runs at
+  most once a day — never on a timer.
 
 ## The four tools
 

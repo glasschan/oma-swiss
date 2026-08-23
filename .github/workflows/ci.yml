@@ -9,7 +9,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Run Omarchy's own installer gate, fetched fresh from upstream so schema
       # drift in Omarchy fails this CI instead of silently accepting a manifest
@@ -24,3 +24,10 @@ jobs:
 
       - name: Marketplace submission pre-checks
         run: scripts/check-submission.sh
+
+      # Regression tripwires for the security-baseline classes that reached
+      # us as a marketplace comment (shell quoting of QML-derived paths,
+      # deadlines on compositor/network processes) plus the repo's own copy
+      # rules (zh must be 書面語). See the script header for the exemptions.
+      - name: Hardening + copy tripwires
+        run: scripts/check-hardening.sh

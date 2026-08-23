@@ -11,7 +11,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Tag must match manifest version
         run: |
@@ -22,19 +22,19 @@ jobs:
             exit 1
           fi
 
-      - name: Validate before shipping
-        run: |
-          curl -fsSL "https://raw.githubusercontent.com/basecamp/omarchy/quattro/bin/omarchy-plugin-validate" \
-            -o /tmp/omarchy-plugin-validate
-          bash /tmp/omarchy-plugin-validate .
-          scripts/check-submission.sh
+      # Local pre-checks only — this job holds the release-publishing token and
+      # must not execute network-fetched code. The unpinned upstream validator
+      # deliberately stays in CI (unprivileged) where schema drift belongs;
+      # the tagged commit has already passed that CI on main.
+      - name: Submission pre-checks
+        run: scripts/check-submission.sh
 
       - name: Package plugin payload
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           mkdir -p dist/oma-swiss
           cp manifest.json BarWidget.qml ToolPanel.qml tabler-icons.ttf preview.png \
-             README.md AGENTS.md LICENSE dist/oma-swiss/
+             README.md README.zh-Hant.md AGENTS.md LICENSE dist/oma-swiss/
           cd dist && zip -r "oma-swiss-v${TAG}.zip" oma-swiss && cd ..
           sha256sum dist/*.zip > dist/sha256.txt
 
