@@ -87,12 +87,12 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Ownership
 
-- Root-owned files: `README.md`, `README.zh-Hant.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `tabler-icons.ttf` (subset), `preview.png` (73:35 marketing cover), `panel.png` (raw panel screenshot), `design/cover.html` (cover source), `.github/workflows/*`, `scripts/check-submission.sh`, `scripts/check-hardening.sh`, `.gitignore`, and root-level project documentation.
+- Root-owned files: `README.md`, `README.zh-Hant.md`, `LICENSE`, `manifest.json`, `BarWidget.qml`, `ToolPanel.qml`, `EvalQueue.qml`, `tabler-icons.ttf` (subset), `preview.png` (73:35 marketing cover), `panel.png` (raw panel screenshot), `design/cover.html` (cover source), `.github/workflows/*`, `scripts/check-submission.sh`, `scripts/check-hardening.sh`, `.gitignore`, and root-level project documentation.
 
 ## Local Contracts
 
 - Plugin id `glasschan.oma-swiss`, kind `bar-widget`, single entry point `BarWidget.qml`.
-- `BarWidget.qml` owns all state and actions; `ToolPanel.qml` is a pure view injected with `hostWidget`. No state may live in the panel.
+- `BarWidget.qml` owns all state and actions; `ToolPanel.qml` is a pure view injected with `hostWidget` (consumes only the host members it names, via `t()` for strings). No state may live in the panel. The queued-eval slot lives in `EvalQueue.qml` — one module owning the single-slot queue, its eval runner and the completion notification; its interface is `enqueue(expr, notify, glyph)`.
 - Flag files are the source of truth and must stay byte-compatible:
   - Swap: `~/.local/state/omarchy/toggles/hypr/super-alt-swap.lua` (same path and Lua content as the retired super-alt-swap plugin).
   - Aspect: `~/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua` — written directly with the chosen ratio; never call `omarchy-hyprland-toggle` for it (its "on" copies stock 1:1).
@@ -106,7 +106,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Work Guidance
 
-- Resource floor is a hard design rule: no timers (except the 100 ms configreload debounce), no polling, no background services. File watching via FileView `watchChanges` only; hyprctl work through the single queued-eval Process so rapid clicks land in order. The swap/aspect flag writes/removals ride INSIDE the eval expressions (eval Lua carries io/os, verified 2026-08-24) — file and compositor state move as one and the old setText/rm race (flag file disagreeing with live state until a reload reasserted the stale side) cannot recur; a rejected eval writes nothing.
+- Resource floor is a hard design rule: no timers (except the 100 ms configreload debounce), no polling, no background services. File watching via FileView `watchChanges` only; hyprctl work through the single queued-eval slot in `EvalQueue.qml` so rapid clicks land in order. The swap/aspect flag writes/removals ride INSIDE the eval expressions (eval Lua carries io/os, verified 2026-08-24) — the atomic flag-mutation invariant is encoded once in `flagEval()` (BarWidget.qml); file and compositor state move as one and the old setText/rm race (flag file disagreeing with live state until a reload reasserted the stale side) cannot recur; a rejected eval writes nothing.
 - Security hardening (marketplace baseline findings, 2026-08-24): every QML-derived path that reaches a `sh -c` command MUST go through `shellQuote()` — never raw single-quote concatenation (a quote-bearing HOME must not change the command). Every compositor/dbus subprocess carries a deadline — `timeout` in Process argv AND inside `sh -c` strings (quickshell ignores `running=true` on a busy Process, so an unbounded one silently swallows later toggles); `curl` uses `--max-time`; the update check takes an `flock` so concurrent monitor instances never duplicate a fetch. The release job executes no network-fetched code (the unpinned upstream validator lives only in unprivileged CI, where the moving pin is intentional) and both workflows pin `actions/checkout` by full SHA. FileView has no size/FIFO bound API: reading the plugin's own user-writable state files unbounded is an accepted risk (local write access to `$XDG_STATE_HOME` already owns the session); do not add polling to "fix" it.
 - Quick actions are the one sanctioned exception to the queued-eval rule: stateless one-shot launches. They MUST go through `launchDetached` (`setsid -f ... </dev/null >/dev/null 2>&1`): quickshell Process children inherit piped stdio, and tools that read stdin block forever — slurp reads preselections from stdin before mapping its overlay, which was the OCR hang that stacked every later capture tool behind a dead grab. Detached also means no tool is ever killed by an actionProc restart or a shell restart. The panel closes when an action fires (selection overlays need a clear screen). The record action chooses start vs stop with a click-time `pgrep '^gpu-screen-recorder'` — a single check, never a loop.
 - All plugin icons (bar + panel) are Tabler Icons (MIT, https://tabler.io/icons) rendered from the bundled `tabler-icons.ttf` — a 7 KB subset (upstream webfont is 2.8 MB) loaded once via FontLoader; controls must set `fontFamily` to `iconFont`, because Tabler codepoints collide with Nerd Fonts' codicons range. Adding/changing an icon: look up the codepoint in @tabler/icons-webfont's `tabler-icons.css`, add it to the subset command documented in BarWidget.qml, rebuild with `fontTools.subset`, and redeploy the font. The 中/EN language button is plain text (system font fallback) and notification glyphs stay Nerd Font — the notification daemon renders with system fonts and cannot see the plugin's FontLoader. Custom SVG bar icons were tried and rejected (optical misalignment vs. font glyphs); keep the bar icon a font glyph.
@@ -119,7 +119,7 @@ When the user requests a durable behavior change, record it here or in the relev
 ## Verification
 
 - `omarchy plugin validate <repo root>` must pass before deploying.
-- Deploy loop: sync `BarWidget.qml`, `ToolPanel.qml`, `manifest.json`, `tabler-icons.ttf`, `preview.png`, `panel.png`, and docs to `~/.config/omarchy/plugins/glasschan.oma-swiss/`, ensure `~/.config/omarchy/shell.json` bar layout has `{"id": "glasschan.oma-swiss"}` (replacing `glasschan.super-alt-swap` if migrating), then `omarchy restart shell` (hot-reload can keep serving stale compiled QML), then E2E:
+- Deploy loop: sync `BarWidget.qml`, `ToolPanel.qml`, `EvalQueue.qml`, `manifest.json`, `tabler-icons.ttf`, `preview.png`, `panel.png`, and docs to `~/.config/omarchy/plugins/glasschan.oma-swiss/`, ensure `~/.config/omarchy/shell.json` bar layout has `{"id": "glasschan.oma-swiss"}` (replacing `glasschan.super-alt-swap` if migrating), then `omarchy restart shell` (hot-reload can keep serving stale compiled QML), then E2E:
   - `omarchy-shell glasschan.oma-swiss toggle` — `hyprctl -j devices` shows `altwin:swap_lalt_lwin` added/removed on `at-translated-set-2-keyboard`; swap flag file appears/disappears
   - `omarchy-shell glasschan.oma-swiss aspect 16 10` — `hyprctl getoption layout:single_window_aspect_ratio` returns `[16, 10]`; flag file content has `{ 16, 10 }`
   - `omarchy-shell glasschan.oma-swiss aspectOff` — getoption back to `[0, 0]`; flag file absent
@@ -131,6 +131,20 @@ When the user requests a durable behavior change, record it here or in the relev
   - quick actions: every action spawns detached — no capture-tool children remain under the quickshell process (`pgrep -af slurp` clean after the tool exits); record button start/stop via `pgrep -f '^gpu-screen-recorder'`; `omarchy-capture-screenshot region` etc. exist in PATH (`command -v`); interactive OCR/screenshot selection needs one manual click-through test (slurp overlay must appear and be draggable — the stdin-pipe regression this guards against)
   - external writer check: run the stock `omarchy-hyprland-window-single-square-aspect-toggle` once; `status` must report `aspect=1:1` (watcher picked it up), then restore
 - End of test session: leave swap off; restore the user's aspect ratio (currently 4:3) unless asked otherwise; leave Opinionated Looks as the user's current visual state (on, via the flag file).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs for this repo live as GitHub issues in `glasschan/oma-swiss`, operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles use the default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
 
 ## Child DOX Index
 
