@@ -303,7 +303,19 @@ BarWidget {
 
   function tr(key) {
     var table = strings[uiLang] || strings.en
-    return table[key] !== undefined ? table[key] : strings.en[key]
+    if (table[key] !== undefined) return table[key]
+    if (strings.en[key] === undefined)
+      console.warn("oma-swiss: unknown string key", key)
+    return strings.en[key]
+  }
+
+  // Fail loudly if the two language blocks drift apart: a missing key is
+  // invisible until that language is rendered, so catch it at load time.
+  function checkStringParity() {
+    for (var k in strings.en)
+      if (strings.zh[k] === undefined) console.warn("oma-swiss: zh missing key", k)
+    for (var k2 in strings.zh)
+      if (strings.en[k2] === undefined) console.warn("oma-swiss: en missing key", k2)
   }
 
   function toggleLang() {
@@ -367,29 +379,15 @@ BarWidget {
 
   // ---- shared queued hyprctl eval -------------------------------------------
 
-  // One Process, one slot: rapid clicks queue instead of dropping, so every
-  // action lands in order. An eval may carry a notification (message +
-  // glyph) that is sent only if the eval lands.
-  property string pendingExpr: ""
-  property bool evalPending: false
-  property string evalNotify: ""
-  property string evalNotifyGlyph: ""
-  property string queuedNotify: ""
-  property string queuedNotifyGlyph: ""
-
-  function queueEval(expr, notify, glyph) {
-    if (evalProc.running) {
-      pendingExpr = expr
-      evalPending = true
-      queuedNotify = notify || ""
-      queuedNotifyGlyph = glyph || ""
-      return
-    }
-    evalPending = false
-    evalNotify = notify || ""
-    evalNotifyGlyph = glyph || ""
-    evalProc.command = ["timeout", "10", "hyprctl", "eval", expr]
-    evalProc.running = true
+  // One slot, last absolute intent wins: rapid clicks queue instead of
+  // dropping, so every action lands in order. The queue, its eval runner and
+  // its completion notification all live in EvalQueue.qml — the interface is
+  // one call, enqueue(). Flag mutations ride INSIDE the eval expressions
+  // (see flagEval below), so file and compositor state move as one and a
+  // rejected eval writes nothing.
+  EvalQueue {
+    id: evalQueue
+    onBroadcastRequested: root.broadcast("refresh")
   }
 
   // Flag mutations live INSIDE the eval expressions: the swap/aspect flags
@@ -398,33 +396,41 @@ BarWidget {
   // until the next config reload reasserted the stale side (flag = truth).
   // Serializing through the single eval slot makes file and compositor move
   // as one, and a rejected eval writes nothing — the consistent failure mode.
+  // The swap/aspect flags are the source of truth and MUST move with the
+  // compositor as one atomic step: a flag mutation rides inside the eval
+  // expression, so file and live state never disagree, and a rejected eval
+  // writes nothing. This function is the single place that invariant is
+  // encoded — callers just pass the flag path, the content (null = remove),
+  // and the hl.* tail that applies it.
+  function flagEval(flagPath, content, hyprTail) {
+    var file = content !== null
+      ? "local f = io.open(" + luaString(flagPath) + ', "w"); '
+        + "f:write(" + luaString(content) + "); f:close(); "
+      : "os.remove(" + luaString(flagPath) + "); "
+    return file + hyprTail
+  }
+
   function evalSwap(on, options) {
-    var file = on
-      ? "local f = io.open(" + luaString(swapFlagPath) + ', "w"); '
-        + "f:write(" + luaString(swapToggleLua) + "); f:close(); "
-      : "os.remove(" + luaString(swapFlagPath) + "); "
-    return file + 'hl.device({ name = "' + keyboardName + '", kb_options = "' + options + '" })'
+    return flagEval(swapFlagPath, on ? swapToggleLua : null,
+      'hl.device({ name = "' + keyboardName + '", kb_options = "' + options + '" })')
   }
 
   function evalAspect(w, h) {
-    var file = w > 0 && h > 0
-      ? "local f = io.open(" + luaString(aspectFlagPath) + ', "w"); '
-        + "f:write(" + luaString(aspectFlagLua(w, h)) + "); f:close(); "
-      : "os.remove(" + luaString(aspectFlagPath) + "); "
-    return file + "hl.config({ layout = { single_window_aspect_ratio = { " + w + ", " + h + " } } })"
+    return flagEval(aspectFlagPath, w > 0 && h > 0 ? aspectFlagLua(w, h) : null,
+      "hl.config({ layout = { single_window_aspect_ratio = { " + w + ", " + h + " } } })")
   }
 
   // ---- actions ----------------------------------------------------------------
 
   function toggleSwap() {
     console.log("oma-swiss: swap toggle, swapped =", swapped)
-    // Flip the icon right away; evalProc's exit re-reads the live state and
-    // corrects it if the eval did not land.
+    // Flip the icon right away; the EvalQueue's exit re-reads the live state
+    // and corrects it if the eval did not land.
     swapped = !swapped
     if (swapped) {
-      queueEval(evalSwap(true, baseOptions === "" ? swapOption : baseOptions + "," + swapOption))
+      evalQueue.enqueue(evalSwap(true, baseOptions === "" ? swapOption : baseOptions + "," + swapOption))
     } else {
-      queueEval(evalSwap(false, baseOptions))
+      evalQueue.enqueue(evalSwap(false, baseOptions))
     }
   }
 
@@ -439,7 +445,7 @@ BarWidget {
     console.log("oma-swiss: aspect set", wi + ":" + hi)
     aspectW = wi
     aspectH = hi
-    queueEval(evalAspect(wi, hi), "Single-window aspect: " + wi + ":" + hi, "󰘮")
+    evalQueue.enqueue(evalAspect(wi, hi), "Single-window aspect: " + wi + ":" + hi, "󰘮")
     saveLast(wi, hi)
   }
 
@@ -469,7 +475,7 @@ BarWidget {
     console.log("oma-swiss: aspect off")
     aspectW = 0
     aspectH = 0
-    queueEval(evalAspect(0, 0), "Single-window aspect: off", "󰘮")
+    evalQueue.enqueue(evalAspect(0, 0), "Single-window aspect: off", "󰘮")
   }
 
   function saveLast(w, h) {
@@ -485,6 +491,31 @@ BarWidget {
     aspectFlagFile.reload()
   }
 
+  // The live reading is the only source of truth for the swap: this is the
+  // single place the query result is reconciled into baseOptions/swapped.
+  // baseOptions is recovered from each reading so user edits in
+  // hypr/input.lua are never shadowed by a stale copy; the optimistic flip in
+  // toggleSwap is corrected here if the eval did not land.
+  function reconcileKeyboard(jsonText) {
+    let keyboards
+    try {
+      keyboards = JSON.parse(jsonText || "{}").keyboards
+    } catch (e) {
+      return
+    }
+    if (!Array.isArray(keyboards)) return
+    for (var i = 0; i < keyboards.length; i++) {
+      if (String(keyboards[i].name || "") !== root.keyboardName) continue
+      var options = String(keyboards[i].options || "").split(",")
+        .filter(function(o) { return o !== "" })
+      root.baseOptions = options
+        .filter(function(o) { return o !== root.swapOption })
+        .join(",")
+      root.swapped = options.indexOf(root.swapOption) !== -1
+      break
+    }
+  }
+
   function parseAspectFlag(text) {
     var m = /single_window_aspect_ratio\s*=\s*\{\s*(\d+)\s*,\s*(\d+)\s*\}/.exec(text || "")
     if (m) {
@@ -497,6 +528,7 @@ BarWidget {
   }
 
   Component.onCompleted: {
+    checkStringParity()
     ensureStateDir.running = true
     refresh()
   }
@@ -621,80 +653,15 @@ BarWidget {
   // The live reading is the only source of truth for the swap icon: the eval
   // that toggles is async, so state is queried again after it lands. The
   // coreutils `timeout` bounds a hung hyprctl without a QML timer (same
-  // deadline hardening as evalProc; security-baseline finding, 2026-08-24).
+  // deadline hardening as the EvalQueue runner; security-baseline finding,
+  // 2026-08-24).
   Process {
     id: queryProc
     command: ["timeout", "10", "hyprctl", "-j", "devices"]
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: {
-        let keyboards
-        try {
-          keyboards = JSON.parse(text || "{}").keyboards
-        } catch (e) {
-          return
-        }
-        if (!Array.isArray(keyboards)) return
-
-        for (var i = 0; i < keyboards.length; i++) {
-          if (String(keyboards[i].name || "") !== root.keyboardName) continue
-          var options = String(keyboards[i].options || "").split(",")
-            .filter(function(o) { return o !== "" })
-          root.baseOptions = options
-            .filter(function(o) { return o !== root.swapOption })
-            .join(",")
-          root.swapped = options.indexOf(root.swapOption) !== -1
-          break
-        }
-      }
+      onStreamFinished: root.reconcileKeyboard(text)
     }
-  }
-
-  // Applies one queued eval (swap device options or aspect ratio). The exit
-  // handler chains any action queued while busy, then broadcasts to every
-  // monitor's instance, so the optimistic UI is always corrected by the truth
-  // and no screen keeps stale state.
-  Process {
-    id: evalProc
-    stdout: StdioCollector {
-      id: evalOut
-      waitForEnd: true
-    }
-    stderr: StdioCollector {
-      id: evalErr
-      waitForEnd: true
-    }
-    onExited: function(exitCode) {
-      if (exitCode !== 0) {
-        // hyprctl prints errors on stdout, so both streams are shown.
-        console.warn("oma-swiss: hyprctl eval failed (" + exitCode + "):",
-          (evalOut.text.trim() || evalErr.text.trim()))
-      } else if (root.evalNotify !== "") {
-        notifyProc.command = ["timeout", "10", "omarchy-notification-send", "-g",
-          root.evalNotifyGlyph, root.evalNotify]
-        notifyProc.running = true
-      }
-      root.evalNotify = ""
-      root.evalNotifyGlyph = ""
-      if (root.evalPending) {
-        var expr = root.pendingExpr
-        root.evalPending = false
-        root.pendingExpr = ""
-        root.evalNotify = root.queuedNotify
-        root.evalNotifyGlyph = root.queuedNotifyGlyph
-        root.queuedNotify = ""
-        root.queuedNotifyGlyph = ""
-        evalProc.command = ["timeout", "10", "hyprctl", "eval", expr]
-        evalProc.running = true
-      } else {
-        root.broadcast("refresh")
-      }
-    }
-  }
-
-  // Fires the completion notification for an eval that landed.
-  Process {
-    id: notifyProc
   }
 
   // Aspect flag: watched so external writers (the stock

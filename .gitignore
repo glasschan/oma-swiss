@@ -1,6 +1,7 @@
 # tooling artifacts — not part of the plugin
 .codegraph/
 dist/
+.git.broken/
 
 # editor / OS junk
 .DS_Store

@@ -20,6 +20,12 @@ Panel {
   readonly property var barIdentity: hostWidget || root
   readonly property var tool: hostWidget
 
+  // Narrow host contract: the view consumes ONLY the hostWidget members
+  // named in this file (state, strings, actions) — nothing else is reachable
+  // by contract. t() absorbs the null guard for the brief window where the
+  // panel exists before hostWidget is injected, so no tr() call repeats it.
+  function t(key) { return hostWidget && hostWidget.tr ? hostWidget.tr(key) : "" }
+
   KeyboardPanel {
     id: panel
     anchorItem: root.anchorItem
@@ -52,7 +58,7 @@ Panel {
             id: actionsHeader
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: root.tool ? root.tool.tr("sec_actions") : ""
+            text: root.t("sec_actions")
           }
 
           // Upgrade badge: appears left of the language switch only when a
@@ -70,7 +76,7 @@ Panel {
             foreground: Color.urgent
             hoverColor: Color.urgent
             tooltipText: root.tool && root.tool.updateAvailable
-              ? root.tool.tr("upd_tip").arg(root.tool.latestVersion) : ""
+              ? root.t("upd_tip").arg(root.tool.latestVersion) : ""
             onClicked: if (root.tool) root.tool.handleUpdateClick()
           }
 
@@ -79,7 +85,7 @@ Panel {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             iconText: root.tool && root.tool.uiLang === "en" ? "中" : "EN"
-            tooltipText: root.tool ? root.tool.tr("lang_tip") : ""
+            tooltipText: root.t("lang_tip")
             onClicked: if (root.tool) root.tool.toggleLang()
           }
         }
@@ -104,7 +110,7 @@ Panel {
               PanelActionButton {
                 iconText: modelData.icon
                 fontFamily: root.tool ? root.tool.iconFont : ""
-                tooltipText: root.tool ? root.tool.tr(modelData.tip) : ""
+                tooltipText: root.t(modelData.tip)
                 size: Style.space(38)
                 fontSize: Style.font.iconLarge
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -112,7 +118,7 @@ Panel {
               }
 
               Text {
-                text: root.tool ? root.tool.tr(modelData.label) : ""
+                text: root.t(modelData.label)
                 color: Qt.darker(root.barForeground, 1.4)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -124,26 +130,26 @@ Panel {
 
         PanelSeparator {}
 
-        PanelSectionHeader { text: root.tool ? root.tool.tr("sec_keyboard") : "" }
+        PanelSectionHeader { text: root.t("sec_keyboard") }
 
         Toggle {
           width: parent.width
-          label: root.tool ? root.tool.tr("swap_label") : ""
-          description: root.tool ? root.tool.tr("swap_desc") : ""
+          label: root.t("swap_label")
+          description: root.t("swap_desc")
           checked: root.tool && root.tool.swapped
           onClicked: if (root.tool) root.tool.toggleSwap()
         }
 
         PanelSeparator {}
 
-        PanelSectionHeader { text: root.tool ? root.tool.tr("sec_aspect") : "" }
+        PanelSectionHeader { text: root.t("sec_aspect") }
 
         Flow {
           width: parent.width
           spacing: Style.spacing.controlGap
 
           Button {
-            text: root.tool ? root.tool.tr("off") : ""
+            text: root.t("off")
             selected: root.tool && !root.tool.aspectOn
             onClicked: if (root.tool) root.tool.clearAspect()
           }
@@ -173,7 +179,7 @@ Panel {
 
             NumberField {
               id: customW
-              label: root.tool ? root.tool.tr("width") : ""
+              label: root.t("width")
               from: 1
               to: 64
               fieldWidth: customRow.cellW
@@ -181,7 +187,7 @@ Panel {
 
             NumberField {
               id: customH
-              label: root.tool ? root.tool.tr("height") : ""
+              label: root.t("height")
               from: 1
               to: 64
               fieldWidth: customRow.cellW
@@ -192,7 +198,7 @@ Panel {
               height: customH.height
 
               Button {
-                text: root.tool ? root.tool.tr("apply") : ""
+                text: root.t("apply")
                 width: parent.width
                 anchors.bottom: parent.bottom
                 onClicked: if (root.tool)
@@ -221,27 +227,27 @@ Panel {
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           text: root.tool && root.tool.aspectOn
-            ? root.tool.tr("active") + ": " + root.tool.aspectW + ":" + root.tool.aspectH
-              + (root.tool.aspectIsPreset(root.tool.aspectW, root.tool.aspectH) ? "" : " · " + root.tool.tr("custom"))
-            : root.tool.tr("active") + ": " + root.tool.tr("offState")
+            ? root.t("active") + ": " + root.tool.aspectW + ":" + root.tool.aspectH
+              + (root.tool.aspectIsPreset(root.tool.aspectW, root.tool.aspectH) ? "" : " · " + root.t("custom"))
+            : root.t("active") + ": " + root.t("offState")
         }
 
         Toggle {
           width: parent.width
-          label: root.tool ? root.tool.tr("pin_label") : ""
-          description: root.tool ? root.tool.tr("pin_desc") : ""
+          label: root.t("pin_label")
+          description: root.t("pin_desc")
           checked: root.tool && root.tool.pinHotkey
           onClicked: if (root.tool) root.tool.setPin(!root.tool.pinHotkey)
         }
 
         PanelSeparator {}
 
-        PanelSectionHeader { text: root.tool ? root.tool.tr("sec_looks") : "" }
+        PanelSectionHeader { text: root.t("sec_looks") }
 
         Toggle {
           width: parent.width
-          label: root.tool ? root.tool.tr("looks_label") : ""
-          description: root.tool ? root.tool.tr("looks_desc") : ""
+          label: root.t("looks_label")
+          description: root.t("looks_desc")
           checked: root.tool && root.tool.lookOn
           onClicked: if (root.tool) root.tool.setLook(!root.tool.lookOn)
         }
