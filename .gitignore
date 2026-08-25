@@ -2,6 +2,7 @@
 .codegraph/
 dist/
 .git.broken/
+mise.toml
 
 # editor / OS junk
 .DS_Store
