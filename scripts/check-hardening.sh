@@ -23,6 +23,10 @@
 #      io.open "wx" does not exist in hyprctl's Lua)
 #   8. dd reads must be bounded: timeout deadline + iflag=nonblock + bs=
 #      and count= byte caps on the same line
+# Follow-up finding (review of 209f221, 2026-08-27):
+#   9. no `exec N>` fd-redirection opens on predictable paths — the open
+#      truncates through a planted symlink; mutual-exclusion locks ride a
+#      read-only fd on the state directory's own inode
 # Usage: scripts/check-hardening.sh [repo-dir]
 
 set -euo pipefail
@@ -56,6 +60,8 @@ for path in files:
                 fails.append(f"{where}: curl without --max-time/--max-filesize (deadline + size bound)")
             if re.search(r"\bcat\s*>", line):
                 fails.append(f"{where}: cat redirection write — use mktemp + atomic mv (symlink-safe)")
+            if re.search(r"exec\s+\d+>", line):
+                fails.append(f"{where}: fd redirection open (exec N>) — truncates through a planted symlink; lock the state-dir fd instead")
             if "dd if=" in line and not all(m in line for m in ("timeout", "iflag=nonblock", "bs=", "count=")):
                 fails.append(f"{where}: dd read must be bounded (timeout + iflag=nonblock + bs/count caps)")
             if "io.open(" in line and not any("os.rename" in lines[k] for k in range(n - 1, min(n + 1, len(lines)))):

@@ -1,5 +1,6 @@
 # tooling artifacts — not part of the plugin
 .codegraph/
+.mimosa/
 dist/
 .git.broken/
 mise.toml

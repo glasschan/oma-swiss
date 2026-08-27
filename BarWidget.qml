@@ -862,7 +862,11 @@ BarWidget {
 
   // One-shot release check, fired only by maybeCheckUpdate (panel open +
   // stale cache). The flock makes a second monitor's instance bow out
-  // instead of racing a duplicate fetch and a blank cache stamp. The
+  // instead of racing a duplicate fetch and a blank cache stamp. The lock
+  // rides the state directory's own inode (read-only fd) — never a
+  // predictable lock file, whose `>` open would truncate through a planted
+  // symlink (marketplace follow-up finding, 2026-08-27); the legacy
+  // "$1.lock" is unlinked, and rm -f never follows a symlink. The
   // response is size-bounded both ways — --max-filesize aborts before the
   // download when the server names a length, and head -c caps the buffered
   // bytes when it does not (marketplace security finding, 2026-08-27) — so
@@ -872,7 +876,7 @@ BarWidget {
   Process {
     id: updateProc
     command: ["sh", "-c",
-      'exec 9>"$1.lock"; flock -n 9 || exit 42; '
+      'exec 9<"${1%/*}"; flock -n 9 || exit 42; rm -f -- "$1.lock"; '
         + "curl -fsS --max-time 5 --max-filesize 262144 https://api.github.com/repos/glasschan/oma-swiss/releases/latest "
         + "| head -c 262144",
       "sh", root.updateCachePath]
