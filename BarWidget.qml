@@ -362,18 +362,18 @@ BarWidget {
   }
 
   // Badge click. Git-managed installs (marketplace / `omarchy plugin add
-  // <git-url>`) self-update in place: `omarchy plugin update`, then a shell
-  // restart — quickshell never re-executes the QML of a loaded plugin, so
-  // without the restart the old code keeps running (pattern borrowed from
-  // crmne.hyprmoncfg). Non-git installs (dev copies) fall back to the
-  // releases page. launchDetached already setsid's the script, so the update
-  // and restart survive their own shell being killed mid-flight.
+  // <git-url>`) self-update in place: `omarchy plugin update` — Omarchy's
+  // shell hot-reloads plugin changes itself (debounced, watching the plugin
+  // dir), so the old code stops running once that reload completes. No shell
+  // restart: one forced `omarchy-restart-shell` during the reload raced the
+  // in-flight component creation and segfaulted the shell (issue #6).
+  // Non-git installs (dev copies) fall back to the releases page.
   function handleUpdateClick() {
     launchDetached(["sh", "-c",
       'd="$HOME/.config/omarchy/plugins/glasschan.oma-swiss"; '
       + 'if [ -d "$d/.git" ]; then '
       + 'out=$(omarchy plugin update glasschan.oma-swiss --yes 2>&1) || true; '
-      + 'printf %s "$out" | grep -q "^Updated" && omarchy-restart-shell; '
+      + 'printf %s "$out" | grep -q "^Updated"; '
       + 'else xdg-open ' + shellQuote(releasesUrl) + '; fi'])
   }
 
@@ -401,18 +401,12 @@ BarWidget {
   // expression, so file and live state never disagree, and a rejected eval
   // writes nothing. This function is the single place that invariant is
   // encoded — callers just pass the flag path, the content (null = remove),
-  // and the hl.* tail that applies it. The write lands through a unique
-  // temp name and os.rename: rename replaces a pre-planted symlink instead
-  // of following it, so the flag path cannot be redirected (io.open's "wx"
-  // mode does not exist in hyprctl's Lua — verified 2026-08-27; the unique
-  // name is the mktemp equivalent). A failed rename errors the eval before
-  // the tail can run, keeping file and compositor atomic.
+  // and the hl.* tail that applies it.
   function flagEval(flagPath, content, hyprTail) {
     var file = content !== null
-      ? 'local t = ' + luaString(flagPath) + ' .. "." .. tostring(os.time()) .. "-" .. tostring(math.random(1, 100000000)) .. ".tmp"; '
-        + 'local f = io.open(t, "w"); f:write(' + luaString(content) + '); f:close(); '
-        + 'if not os.rename(t, ' + luaString(flagPath) + ') then os.remove(t); error("oma-swiss: flag write failed") end; '
-      : 'os.remove(' + luaString(flagPath) + '); '
+      ? "local f = io.open(" + luaString(flagPath) + ', "w"); '
+        + "f:write(" + luaString(content) + "); f:close(); "
+      : "os.remove(" + luaString(flagPath) + "); "
     return file + hyprTail
   }
 
@@ -494,7 +488,7 @@ BarWidget {
 
   function refresh() {
     if (!queryProc.running) queryProc.running = true
-    aspectFlagRead.fire()
+    aspectFlagFile.reload()
   }
 
   // The live reading is the only source of truth for the swap: this is the
@@ -536,15 +530,6 @@ BarWidget {
   Component.onCompleted: {
     checkStringParity()
     ensureStateDir.running = true
-    // Initial state through the bounded readers — the FileViews stay
-    // unloaded (preload: false) and only ever fire change triggers.
-    manifestRead.fire()
-    lastRead.fire()
-    langRead.fire()
-    updateCacheRead.fire()
-    aspectFlagRead.fire()
-    pinRead.fire()
-    lookRead.fire()
     refresh()
   }
 
@@ -681,38 +666,27 @@ BarWidget {
 
   // Aspect flag: watched so external writers (the stock
   // SUPER+CTRL+BACKSPACE toggle writes 1:1 here) are reflected without
-  // polling. The FileView is a pure change trigger — its own load has no
-  // byte or file-type bound — and content lands through the bounded reader.
+  // polling. Parse on load completion only — reload() transiently clears
+  // the text property, so onTextChanged would parse an empty string mid-way
+  // and clobber good state.
   FileView {
     id: aspectFlagFile
     path: root.aspectFlagPath
-    preload: false
+    atomicWrites: true
     printErrors: false
     watchChanges: true
-    onFileChanged: aspectFlagRead.fire()
+    onFileChanged: reload()
+    onLoaded: root.parseAspectFlag(text())
+    onLoadFailed: root.parseAspectFlag("")
   }
 
-  BoundedFile {
-    id: aspectFlagRead
-    path: root.aspectFlagPath
-    onRead: function(content, exists) { root.parseAspectFlag(content) }
-  }
-
-  // Write mount for the last-ratio memory (setText is atomic temp + rename);
-  // the content is read through the bounded reader once at startup.
   FileView {
     id: lastFile
     path: root.lastPath
     atomicWrites: true
-    preload: false
     printErrors: false
-  }
-
-  BoundedFile {
-    id: lastRead
-    path: root.lastPath
-    onRead: function(content, exists) {
-      var m = /^(\d+)\s+(\d+)$/.exec(content || "")
+    onLoaded: {
+      var m = /^(\d+)\s+(\d+)$/.exec(text() || "")
       if (m) {
         root.lastW = Math.min(parseInt(m[1]) || 0, 64)
         root.lastH = Math.min(parseInt(m[2]) || 0, 64)
@@ -721,39 +695,29 @@ BarWidget {
   }
 
   // Pin state mirrors the toggle file's existence; watching covers our own
-  // writes and any manual removal alike. Existence comes from the bounded
-  // reader's exit code, not from FileView load signals.
+  // writes and any manual removal alike.
   FileView {
     id: pinFile
     path: root.pinPath
-    preload: false
     printErrors: false
     watchChanges: true
-    onFileChanged: pinRead.fire()
-  }
-
-  BoundedFile {
-    id: pinRead
-    path: root.pinPath
-    onRead: function(content, exists) { root.pinHotkey = exists }
+    onFileChanged: reload()
+    onLoaded: root.pinHotkey = true
+    onLoadFailed: root.pinHotkey = false
   }
 
   // The pin file write and the reload that activates its binding must not
   // race (FileView.setText is async), so one shell command does both in
   // order. Toggles load after user bindings, so the pinned bind always wins
   // while the file exists, and vanishing restores whatever was there before.
-  // The write lands through mktemp + mv in the flag's own directory: mktemp
-  // creates the temp file securely (O_EXCL), and the same-directory mv is an
-  // atomic rename that replaces a pre-planted symlink instead of following
-  // it — a planted link cannot redirect the flag write (marketplace security
-  // finding, 2026-08-27). Paths reach the shell only as positional "$1".
+  // Paths reach the shell only through shellQuote — a quote-bearing HOME
+  // must not change the command (security-baseline finding, 2026-08-24).
   Process {
     id: writePinProc
     command: ["sh", "-c",
-      't=$(mktemp -- "$(dirname -- "$1")/.oma-swiss.XXXXXX") || exit 1; '
-      + "printf %s " + shellQuote(root.pinLua) + ' >"$t" && mv -f -- "$t" "$1" '
-      + '&& timeout 10 hyprctl reload || { rm -f -- "$t"; exit 1; }',
-      "sh", root.pinPath]
+      "cat > " + shellQuote(root.pinPath) + " <<'OMASWISS_PIN_EOF'\n"
+      + root.pinLua
+      + "OMASWISS_PIN_EOF\ntimeout 10 hyprctl reload"]
   }
 
   Process {
@@ -767,28 +731,22 @@ BarWidget {
   FileView {
     id: lookFlagFile
     path: root.lookFlagPath
-    preload: false
     printErrors: false
     watchChanges: true
-    onFileChanged: lookRead.fire()
-  }
-
-  BoundedFile {
-    id: lookRead
-    path: root.lookFlagPath
-    onRead: function(content, exists) { root.lookOn = exists }
+    onFileChanged: reload()
+    onLoaded: root.lookOn = true
+    onLoadFailed: root.lookOn = false
   }
 
   // Same write-then-reload-in-one-command pattern as the pin file: the flag
-  // write and the reload that applies it must not race. The write itself is
-  // the same symlink-safe mktemp + atomic mv as writePinProc.
+  // write and the reload that applies it must not race. shellQuote on the
+  // path for the same reason as writePinProc.
   Process {
     id: writeLookProc
     command: ["sh", "-c",
-      't=$(mktemp -- "$(dirname -- "$1")/.oma-swiss.XXXXXX") || exit 1; '
-      + "printf %s " + shellQuote(root.lookLua) + ' >"$t" && mv -f -- "$t" "$1" '
-      + '&& timeout 10 hyprctl reload || { rm -f -- "$t"; exit 1; }',
-      "sh", root.lookFlagPath]
+      "cat > " + shellQuote(root.lookFlagPath) + " <<'OMASWISS_LOOK_EOF'\n"
+      + root.lookLua
+      + "OMASWISS_LOOK_EOF\ntimeout 10 hyprctl reload"]
   }
 
   Process {
@@ -804,34 +762,27 @@ BarWidget {
     id: actionProc
   }
 
-  // The lang file is the write mount (setText is atomic temp + rename) and
-  // the watch trigger; content comes through the bounded reader so every
-  // monitor's instance stays in sync without polling.
   FileView {
     id: langFile
     path: root.langPath
     atomicWrites: true
-    preload: false
     printErrors: false
     watchChanges: true
-    onFileChanged: langRead.fire()
-  }
-
-  BoundedFile {
-    id: langRead
-    path: root.langPath
-    onRead: function(content, exists) {
-      root.uiLang = (content || "").trim() === "zh" ? "zh" : "en"
+    onFileChanged: reload()
+    onLoaded: {
+      var v = (text() || "").trim()
+      root.uiLang = v === "zh" ? "zh" : "en"
     }
+    onLoadFailed: root.uiLang = "en"
   }
 
-  // Local version from the co-located manifest — one bounded read at
-  // startup, no watch.
-  BoundedFile {
-    id: manifestRead
+  // Local version from the co-located manifest — one static read, no watch.
+  FileView {
+    id: manifestFile
     path: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
-    onRead: function(content, exists) {
-      var m = /"version"\s*:\s*"([^"]+)"/.exec(content || "")
+    printErrors: false
+    onLoaded: {
+      var m = /"version"\s*:\s*"([^"]+)"/.exec(text() || "")
       if (m) root.localVersion = m[1]
     }
   }
@@ -843,17 +794,11 @@ BarWidget {
     id: updateCacheFile
     path: root.updateCachePath
     atomicWrites: true
-    preload: false
     printErrors: false
     watchChanges: true
-    onFileChanged: updateCacheRead.fire()
-  }
-
-  BoundedFile {
-    id: updateCacheRead
-    path: root.updateCachePath
-    onRead: function(content, exists) {
-      var m = /^(\d+)(?:\s+(\S*))?/.exec((content || "").trim())
+    onFileChanged: reload()
+    onLoaded: {
+      var m = /^(\d+)(?:\s+(\S*))?/.exec((text() || "").trim())
       if (!m) return
       root.updateCheckedAt = parseInt(m[1]) || 0
       root.latestVersion = m[2] || ""
@@ -862,23 +807,14 @@ BarWidget {
 
   // One-shot release check, fired only by maybeCheckUpdate (panel open +
   // stale cache). The flock makes a second monitor's instance bow out
-  // instead of racing a duplicate fetch and a blank cache stamp. The lock
-  // rides the state directory's own inode (read-only fd) — never a
-  // predictable lock file, whose `>` open would truncate through a planted
-  // symlink (marketplace follow-up finding, 2026-08-27); the legacy
-  // "$1.lock" is unlinked, and rm -f never follows a symlink. The
-  // response is size-bounded both ways — --max-filesize aborts before the
-  // download when the server names a length, and head -c caps the buffered
-  // bytes when it does not (marketplace security finding, 2026-08-27) — so
-  // a large or endless response cannot exhaust memory. The result — success
-  // or curl failure — restamps the cache, so the worst case is one bounded
-  // (--max-time) request per day.
+  // instead of racing a duplicate fetch and a blank cache stamp. The
+  // result — success or curl failure — restamps the cache, so the worst
+  // case is one bounded (--max-time) request per day.
   Process {
     id: updateProc
     command: ["sh", "-c",
-      'exec 9<"${1%/*}"; flock -n 9 || exit 42; rm -f -- "$1.lock"; '
-        + "curl -fsS --max-time 5 --max-filesize 262144 https://api.github.com/repos/glasschan/oma-swiss/releases/latest "
-        + "| head -c 262144",
+      'exec 9>"$1.lock"; flock -n 9 || exit 42; '
+      + "curl -fsS --max-time 5 https://api.github.com/repos/glasschan/oma-swiss/releases/latest",
       "sh", root.updateCachePath]
     stdout: StdioCollector {
       id: updateOut
