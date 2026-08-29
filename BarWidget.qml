@@ -269,6 +269,7 @@ BarWidget {
       looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
       lang_tip: "切換介面語言 · Switch UI language",
       upd_tip: "v%1 is out — click to update",
+      upd_fail: "OmaSwiss update failed",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
@@ -292,6 +293,7 @@ BarWidget {
       looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
       lang_tip: "切換介面語言 · Switch UI language",
       upd_tip: "新版本 v%1 可用，點擊更新",
+      upd_fail: "OmaSwiss 更新失敗",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
       qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
@@ -367,13 +369,20 @@ BarWidget {
   // dir), so the old code stops running once that reload completes. No shell
   // restart: one forced `omarchy-restart-shell` during the reload raced the
   // in-flight component creation and segfaulted the shell (issue #6).
-  // Non-git installs (dev copies) fall back to the releases page.
+  // Non-git installs (dev copies) fall back to the releases page. A failed
+  // update (dirty tree, network) surfaces via one desktop notification,
+  // since the detached run otherwise swallows all output; up-to-date (and
+  // successful) clicks stay silent.
   function handleUpdateClick() {
     launchDetached(["sh", "-c",
       'd="$HOME/.config/omarchy/plugins/glasschan.oma-swiss"; '
       + 'if [ -d "$d/.git" ]; then '
       + 'out=$(omarchy plugin update glasschan.oma-swiss --yes 2>&1) || true; '
-      + 'printf %s "$out" | grep -q "^Updated"; '
+      + 'printf %s "$out" | grep -q "^Updated" && exit 0; '
+      + 'printf %s "$out" | grep -q "is up to date" && exit 0; '
+      + 'timeout 10 omarchy-notification-send --app-name OmaSwiss -u normal '
+      + shellQuote(tr("upd_fail"))
+      + ' "$(printf %s "$out" | head -n 1 | cut -c1-160)"; '
       + 'else xdg-open ' + shellQuote(releasesUrl) + '; fi'])
   }
 
@@ -401,12 +410,18 @@ BarWidget {
   // expression, so file and live state never disagree, and a rejected eval
   // writes nothing. This function is the single place that invariant is
   // encoded — callers just pass the flag path, the content (null = remove),
-  // and the hl.* tail that applies it.
+  // and the hl.* tail that applies it. The write lands through a unique
+  // temp name and os.rename: rename replaces a pre-planted symlink instead
+  // of following it, so the flag path cannot be redirected (io.open's "wx"
+  // mode does not exist in hyprctl's Lua — verified 2026-08-27; the unique
+  // name is the mktemp equivalent). A failed rename errors the eval before
+  // the tail can run, keeping file and compositor atomic.
   function flagEval(flagPath, content, hyprTail) {
     var file = content !== null
-      ? "local f = io.open(" + luaString(flagPath) + ', "w"); '
-        + "f:write(" + luaString(content) + "); f:close(); "
-      : "os.remove(" + luaString(flagPath) + "); "
+      ? 'local t = ' + luaString(flagPath) + ' .. "." .. tostring(os.time()) .. "-" .. tostring(math.random(1, 100000000)) .. ".tmp"; '
+        + 'local f = io.open(t, "w"); f:write(' + luaString(content) + '); f:close(); '
+        + 'if not os.rename(t, ' + luaString(flagPath) + ') then os.remove(t); error("oma-swiss: flag write failed") end; '
+      : 'os.remove(' + luaString(flagPath) + '); '
     return file + hyprTail
   }
 
@@ -710,14 +725,18 @@ BarWidget {
   // race (FileView.setText is async), so one shell command does both in
   // order. Toggles load after user bindings, so the pinned bind always wins
   // while the file exists, and vanishing restores whatever was there before.
-  // Paths reach the shell only through shellQuote — a quote-bearing HOME
-  // must not change the command (security-baseline finding, 2026-08-24).
+  // The write lands through mktemp + mv in the flag's own directory: mktemp
+  // creates the temp file securely (O_EXCL), and the same-directory mv is an
+  // atomic rename that replaces a pre-planted symlink instead of following
+  // it — a planted link cannot redirect the flag write (marketplace security
+  // finding, 2026-08-27). Paths reach the shell only as positional "$1".
   Process {
     id: writePinProc
     command: ["sh", "-c",
-      "cat > " + shellQuote(root.pinPath) + " <<'OMASWISS_PIN_EOF'\n"
-      + root.pinLua
-      + "OMASWISS_PIN_EOF\ntimeout 10 hyprctl reload"]
+      't=$(mktemp -- "$(dirname -- "$1")/.oma-swiss.XXXXXX") || exit 1; '
+      + "printf %s " + shellQuote(root.pinLua) + ' >"$t" && mv -f -- "$t" "$1" '
+      + '&& timeout 10 hyprctl reload || { rm -f -- "$t"; exit 1; }',
+      "sh", root.pinPath]
   }
 
   Process {
@@ -739,14 +758,15 @@ BarWidget {
   }
 
   // Same write-then-reload-in-one-command pattern as the pin file: the flag
-  // write and the reload that applies it must not race. shellQuote on the
-  // path for the same reason as writePinProc.
+  // write and the reload that applies it must not race. The write itself is
+  // the same symlink-safe mktemp + atomic mv as writePinProc.
   Process {
     id: writeLookProc
     command: ["sh", "-c",
-      "cat > " + shellQuote(root.lookFlagPath) + " <<'OMASWISS_LOOK_EOF'\n"
-      + root.lookLua
-      + "OMASWISS_LOOK_EOF\ntimeout 10 hyprctl reload"]
+      't=$(mktemp -- "$(dirname -- "$1")/.oma-swiss.XXXXXX") || exit 1; '
+      + "printf %s " + shellQuote(root.lookLua) + ' >"$t" && mv -f -- "$t" "$1" '
+      + '&& timeout 10 hyprctl reload || { rm -f -- "$t"; exit 1; }',
+      "sh", root.lookFlagPath]
   }
 
   Process {
@@ -807,14 +827,23 @@ BarWidget {
 
   // One-shot release check, fired only by maybeCheckUpdate (panel open +
   // stale cache). The flock makes a second monitor's instance bow out
-  // instead of racing a duplicate fetch and a blank cache stamp. The
-  // result — success or curl failure — restamps the cache, so the worst
-  // case is one bounded (--max-time) request per day.
+  // instead of racing a duplicate fetch and a blank cache stamp. The lock
+  // rides the state directory's own inode (read-only fd) — never a
+  // predictable lock file, whose `>` open would truncate through a planted
+  // symlink (marketplace follow-up finding, 2026-08-27); the legacy
+  // "$1.lock" is unlinked, and rm -f never follows a symlink. The
+  // response is size-bounded both ways — --max-filesize aborts before the
+  // download when the server names a length, and head -c caps the buffered
+  // bytes when it does not (marketplace security finding, 2026-08-27) — so
+  // a large or endless response cannot exhaust memory. The result — success
+  // or curl failure — restamps the cache, so the worst case is one bounded
+  // (--max-time) request per day.
   Process {
     id: updateProc
     command: ["sh", "-c",
-      'exec 9>"$1.lock"; flock -n 9 || exit 42; '
-      + "curl -fsS --max-time 5 https://api.github.com/repos/glasschan/oma-swiss/releases/latest",
+      'exec 9<"${1%/*}"; flock -n 9 || exit 42; rm -f -- "$1.lock"; '
+        + "curl -fsS --max-time 5 --max-filesize 262144 https://api.github.com/repos/glasschan/oma-swiss/releases/latest "
+        + "| head -c 262144",
       "sh", root.updateCachePath]
     stdout: StdioCollector {
       id: updateOut
