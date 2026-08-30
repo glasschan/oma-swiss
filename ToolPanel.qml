@@ -115,19 +115,38 @@ Panel {
     && root.tool.updateNotes !== undefined && root.tool.updateNotes !== "")
 
   // View-transient UI state, not app state: whether the custom W/H/Apply row
-  // exists. Derived from the REMEMBERED last ratio (last-aspect), not the
-  // live one, and re-derived on EVERY panel open — the loader never
-  // deactivates, so a one-shot initial binding would stay broken after the
-  // first click. Within a session an explicit chip/preset click overrides
+  // exists, and what its W/H fields hold. Both are re-derived on EVERY panel
+  // open — the loader never deactivates, so one-shot initial work would stay
+  // broken after the first click (the old Component.onCompleted prefill ran
+  // before hostWidget was injected and left the fields on spinbox defaults
+  // forever). Within a session an explicit chip/preset click overrides
   // until the next open.
   property bool customRevealed: false
 
-  onOpenedChanged: if (opened) rederiveCustomReveal()
+  onOpenedChanged: if (opened) { rederiveCustomReveal(); prefillCustomFields() }
 
   function rederiveCustomReveal() {
     var t = root.tool
     root.customRevealed = !!t && t.lastW > 0 && t.lastH > 0
       && !t.aspectIsPreset(t.lastW, t.lastH)
+  }
+
+  // Field prefill rides the same on-open derivation — no host reads at
+  // creation time (hostWidget arrives after the component completes).
+  // Priority per the panel contract: live custom ratio → last-aspect → 21:9.
+  function prefillCustomFields() {
+    var t = root.tool
+    if (!t) return
+    if (t.aspectOn && !t.aspectIsPreset(t.aspectW, t.aspectH)) {
+      customW.field.value = t.aspectW
+      customH.field.value = t.aspectH
+    } else if (t.lastW > 0 && t.lastH > 0) {
+      customW.field.value = t.lastW
+      customH.field.value = t.lastH
+    } else {
+      customW.field.value = 21
+      customH.field.value = 9
+    }
   }
 
   // The header button shows the ACTIVE language as a compact glyph; the
@@ -376,21 +395,6 @@ Panel {
                 anchors.bottom: parent.bottom
                 onClicked: if (root.tool)
                   root.tool.setAspect(customW.field.value, customH.field.value)
-              }
-            }
-
-            Component.onCompleted: {
-              var t = root.tool
-              if (!t) return
-              if (t.aspectOn && !t.aspectIsPreset(t.aspectW, t.aspectH)) {
-                customW.field.value = t.aspectW
-                customH.field.value = t.aspectH
-              } else if (t.lastW > 0 && t.lastH > 0) {
-                customW.field.value = t.lastW
-                customH.field.value = t.lastH
-              } else {
-                customW.field.value = 21
-                customH.field.value = 9
               }
             }
         }
