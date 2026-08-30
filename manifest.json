@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "glasschan.oma-swiss",
   "name": "OmaSwiss",
-  "version": "0.3.9",
+  "version": "0.4.0",
   "author": "Glass Chan",
   "license": "MIT",
-  "description": "One bar icon, four Hyprland tools: laptop Super⇄Alt swap, single-window aspect ratio, Opinionated Looks, and one-click screenshots, OCR & recording. No daemon, no idle cost.",
+  "description": "One bar icon, five Hyprland tools: laptop Super⇄Alt swap, single-window aspect ratio, Opinionated Looks, gaming mode, and one-click screenshots, OCR, QR scan & recording. No daemon, no idle cost.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "OmaSwiss",
-    "description": "Super⇄Alt swap, window aspect ratio, looks toggle and quick capture — four tools, one bar icon",
+    "description": "Super⇄Alt swap, window aspect ratio, looks & gaming toggles and quick capture — five tools, one bar icon",
     "category": "Compositor",
     "allowMultiple": false,
     "defaultSection": "right"
