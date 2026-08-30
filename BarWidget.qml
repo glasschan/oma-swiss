@@ -313,7 +313,7 @@ BarWidget {
       gaming_desc: "VRR (variable refresh) and tearing allowed for the lowest input latency. Off restores Omarchy defaults.",
       looks_label: "Opinionated Looks",
       looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
-      pin_label: "Pin to hotkey",
+      pin_label: "Pin ratio hotkey",
       pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
       off: "Off",
       width: "Width", height: "Height", apply: "Apply",
@@ -321,8 +321,8 @@ BarWidget {
       lang_tip: "Language",
       upd_tip: "v%1 is out — click to update",
       upd_fail: "OmaSwiss update failed",
-      bar_tip_normal: "OmaSwiss · left: tools · right: swap",
-      bar_tip_swapped: "OmaSwiss · swapped · right: restore",
+      bar_tip_normal: "OmaSwiss\nL: tools · M: screenshot · R: swap",
+      bar_tip_swapped: "OmaSwiss\nL: tools · M: screenshot · R: restore",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
@@ -342,7 +342,7 @@ BarWidget {
       gaming_desc: "啟用 VRR（可變更新率）並允許畫面撕裂，降低輸入延遲；關閉即還原 Omarchy 預設。",
       looks_label: "Opinionated Looks",
       looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
-      pin_label: "固定快捷鍵",
+      pin_label: "固定比例快捷鍵",
       pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
       off: "關",
       width: "寬", height: "高", apply: "套用",
@@ -350,8 +350,8 @@ BarWidget {
       lang_tip: "介面語言",
       upd_tip: "新版本 v%1 可用，點擊更新",
       upd_fail: "OmaSwiss 更新失敗",
-      bar_tip_normal: "OmaSwiss · 左：工具 · 右：互換",
-      bar_tip_swapped: "OmaSwiss · 已互換 · 右：還原",
+      bar_tip_normal: "OmaSwiss\n左鍵 工具板 · 中鍵 截圖 · 右鍵 互換",
+      bar_tip_swapped: "OmaSwiss\n左鍵 工具板 · 中鍵 截圖 · 右鍵 還原互換",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
       qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
@@ -371,7 +371,7 @@ BarWidget {
       gaming_desc: "VRR（可変リフレッシュレート）とティアリングを許可し、入力遅延を最小化します。オフで Omarchy の既定に戻ります。",
       looks_label: "Opinionated Looks",
       looks_desc: "角丸、半透明 5px の枠、柔らかな影、vibrancy ブラー。オフで Omarchy の既定に戻ります。",
-      pin_label: "ホットキーに固定",
+      pin_label: "比率ホットキーを固定",
       pin_desc: "SUPER+CTRL+BACKSPACE が、既定の 1:1 の代わりに最後に設定した比率を切り替えます。いつでも元に戻せます。",
       off: "オフ",
       width: "幅", height: "高さ", apply: "適用",
@@ -379,8 +379,8 @@ BarWidget {
       lang_tip: "言語",
       upd_tip: "v%1 がリリースされました — クリックで更新",
       upd_fail: "OmaSwiss の更新に失敗しました",
-      bar_tip_normal: "OmaSwiss · 左：ツール · 右：入れ替え",
-      bar_tip_swapped: "OmaSwiss · 入れ替え中 · 右：元に戻す",
+      bar_tip_normal: "OmaSwiss\n左: ツール · 中: スクリーンショット · 右: 入れ替え",
+      bar_tip_swapped: "OmaSwiss\n左: ツール · 中: スクリーンショット · 右: 元に戻す",
       qa_region_l: "範囲", qa_region_t: "スクリーンショット — 範囲を選択",
       qa_window_l: "ウィンドウ", qa_window_t: "スクリーンショット — ウィンドウを選択",
       qa_full_l: "全画面", qa_full_t: "スクリーンショット — 画面全体",
@@ -400,7 +400,7 @@ BarWidget {
       gaming_desc: "VRR(가변 새로고침)과 테어링을 허용하여 입력 지연을 최소화합니다. 끄면 Omarchy 기본값으로 돌아갑니다.",
       looks_label: "Opinionated Looks",
       looks_desc: "둥근 모서리, 반투명 5px 테두리, 부드러운 그림자, vibrancy 블러. 끄면 Omarchy 기본값으로 돌아갑니다.",
-      pin_label: "단축키 고정",
+      pin_label: "비율 단축키 고정",
       pin_desc: "SUPER+CTRL+BACKSPACE 키가 기본 1:1 대신 마지막으로 설정한 비율을 전환합니다. 언제든지 되돌릴 수 있습니다.",
       off: "끄기",
       width: "너비", height: "높이", apply: "적용",
@@ -408,8 +408,8 @@ BarWidget {
       lang_tip: "언어",
       upd_tip: "v%1 버전이 출시되었습니다 — 클릭하여 업데이트",
       upd_fail: "OmaSwiss 업데이트 실패",
-      bar_tip_normal: "OmaSwiss · 왼쪽: 도구 · 오른쪽: 스왑",
-      bar_tip_swapped: "OmaSwiss · 스왑됨 · 오른쪽: 복원",
+      bar_tip_normal: "OmaSwiss\n왼쪽: 도구 · 가운데: 스크린샷 · 오른쪽: 스왑",
+      bar_tip_swapped: "OmaSwiss\n왼쪽: 도구 · 가운데: 스크린샷 · 오른쪽: 스왑 복원",
       qa_region_l: "영역", qa_region_t: "스크린샷 — 영역 선택",
       qa_window_l: "창", qa_window_t: "스크린샷 — 창 선택",
       qa_full_l: "전체", qa_full_t: "스크린샷 — 전체 화면",
@@ -806,8 +806,9 @@ BarWidget {
     // the urgent color while the swap is on. (The old dimmed-at-rest look
     // came from the retired super-alt-swap plugin.)
     active: root.swapped
-    // Localized, short by design — the bar is not a README. Middle-click is
-    // deliberately not documented here (discovering it is harmless).
+    // Two lines by design — line 1 is the plugin name, line 2 lists all
+    // three buttons (the bar's tooltip Text renders \n natively: no wrap,
+    // no elide, bubble sized to implicitWidth/Height). Localized, short.
     tooltipText: root.swapped ? root.tr("bar_tip_swapped") : root.tr("bar_tip_normal")
     onPressed: function(b) {
       if (b === Qt.LeftButton) root.togglePanel()

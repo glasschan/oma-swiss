@@ -325,12 +325,13 @@ Panel {
             }
           }
 
-          // Reveals the custom W/H/Apply row on demand. Selecting itself is
-          // not an aspect change — nothing lands until 套用.
+          // Reveals the custom W/H/Apply row; clicking again collapses it
+          // (also collapses an auto-revealed row). Selecting a ratio is NOT
+          // what the chip does — nothing lands until 套用.
           Button {
             text: root.t("customChip")
             selected: root.customRevealed
-            onClicked: root.customRevealed = true
+            onClicked: root.customRevealed = !root.customRevealed
           }
         }
 
