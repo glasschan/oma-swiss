@@ -1,6 +1,6 @@
 #!/bin/bash
-# Pre-flight checks for publishing to omarchyplugins.com
-# (HANCORE-linux/omarchy-plugin-marketplace SUBMISSION.md rules). Kept in the
+# Pre-flight checks for publishing to plugins.omarchy.org
+# (omacom/omarchy-plugin-marketplace SUBMISSION.md rules). Kept in the
 # repo so the same gate runs locally and in CI:
 #   - README must document install and removal
 #   - README must document dependencies
