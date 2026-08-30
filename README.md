@@ -4,13 +4,13 @@ English · [繁體中文](README.zh-Hant.md)
 
 [![CI](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml/badge.svg)](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml)
 
-![OmaSwiss — one bar icon, four Hyprland tools](preview.png)
+![OmaSwiss — one bar icon, five Hyprland tools](preview.png)
 
-**One bar icon. Four Hyprland tools.**
+**One bar icon. Five Hyprland tools.**
 
 Swap your laptop's Super and Alt keys, lock the lone window to any aspect
-ratio, restyle your desktop, and capture your screen — all from one popup
-that costs nothing while you're not using it.
+ratio, restyle your desktop, tune for gaming, and capture your screen — all
+from one popup that costs nothing while you're not using it.
 
 ## Why you'll keep it installed
 
@@ -24,10 +24,11 @@ that costs nothing while you're not using it.
 - **中 / EN.** The whole panel switches between English and 繁體中文 with
   one button.
 - **Told when an update lands.** A badge on the panel marks new GitHub
-  releases; one click updates the plugin on git installs. The check runs at
-  most once a day — never on a timer.
+  releases, with the release notes right under it; one click updates the
+  plugin on git installs. The check runs at most once a day — never on a
+  timer.
 
-## The four tools
+## The five tools
 
 - **Super ⇄ Alt swap** — Mac-style modifier keys on the built-in laptop
   keyboard, whenever you want them. External keyboards are never touched.
@@ -38,15 +39,20 @@ that costs nothing while you're not using it.
 - **Opinionated Looks** — rounded corners, a translucent 5px border, soft
   shadows, and vibrancy blur in one toggle. Switch it off and you're back to
   stock Omarchy, exactly.
+- **Gaming mode** — variable refresh (VRR) and tearing allowed in one
+  toggle, for the lowest input latency. Switch it off and the stock values
+  return, exactly.
 - **Quick capture** — region / window / fullscreen screenshots, a color
-  picker, OCR (English + 中文), and screen recording start/stop, one click
-  each. Capture overlays need a clear screen, so the panel closes as the
-  tool fires.
+  picker, OCR (English + 中文), QR scan (decoded text lands in the
+  clipboard), and screen recording start/stop with or without your webcam,
+  one click each. Capture overlays need a clear screen, so the panel closes
+  as the tool fires.
 
 ## Day to day
 
 - **Left-click** the bar icon: open the tools popup.
 - **Right-click**: instant Super⇄Alt toggle.
+- **Middle-click**: instant region screenshot (Esc cancels).
 - **Pin the hotkey** (optional): while pinned, `SUPER+CTRL+BACKSPACE`
   cycles off ⇄ *your last ratio* instead of the stock fixed 1:1 — set 16:9
   in the panel and the hotkey follows. Unpinning restores the previous
@@ -61,6 +67,7 @@ omarchy-shell glasschan.oma-swiss aspectOff      # ratio off
 omarchy-shell glasschan.oma-swiss aspectToggle   # off <-> last ratio
 omarchy-shell glasschan.oma-swiss pin            # pin/unpin the hotkey
 omarchy-shell glasschan.oma-swiss look           # looks on/off
+omarchy-shell glasschan.oma-swiss gaming         # gaming mode on/off
 omarchy-shell glasschan.oma-swiss lang           # EN <-> 中
 omarchy-shell glasschan.oma-swiss panel          # open/close popup
 omarchy-shell glasschan.oma-swiss status         # what's on right now
@@ -81,6 +88,9 @@ deletes the file, so nothing outlives the plugin.
 
 None to install — everything ships with Omarchy v4: Hyprland 0.56+,
 `omarchy-capture-screenshot` (slurp), `omarchy-capture-text` (OCR),
-`omarchy-capture-screenrecording` (gpu-screen-recorder), and `hyprpicker`.
+`omarchy-capture-qr` (zbar), `omarchy-capture-screenrecording`
+(gpu-screen-recorder, with or without webcam), and `hyprpicker`.
+`jq` (present on a stock Omarchy install) is used, when available, to show
+release notes for pending updates — the update check works without it.
 
 MIT.
