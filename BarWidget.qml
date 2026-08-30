@@ -7,10 +7,10 @@ import qs.Ui
 
 // OmaSwiss: the state engine and bar icon. Every piece of state and every
 // action lives here; ToolPanel.qml is a pure view injected with this widget as
-// hostWidget. The toggles (swap, aspect, opinionated looks) are flag-file
-// driven so they survive reloads and logins without the widget running, and
-// everything is event driven — no timers, no polling. Quick actions are
-// stateless one-shot launchers.
+// hostWidget. The toggles (swap, aspect, opinionated looks, gaming mode) are
+// flag-file driven so they survive reloads and logins without the widget
+// running, and everything is event driven — no timers, no polling. Quick
+// actions are stateless one-shot launchers.
 BarWidget {
   id: root
   moduleName: "glasschan.oma-swiss"
@@ -160,14 +160,44 @@ BarWidget {
     "})"
   ].join("\n") + "\n"
 
+  // ---- Tool 4: gaming mode ----------------------------------------------------
+
+  // One flag file owns gaming mode: exists = the block below runs on every
+  // config load (toggles load after user configs, so it overrides looknfeel
+  // and anything else); absent = stock values. VRR plus tearing is the
+  // lowest-latency setup for a game that drives the whole screen. The off
+  // tail hard-codes the Omarchy stock base values, read empirically from a
+  // clean install (verified 2026-08-30): misc:vrr is unset anywhere in the
+  // Omarchy config — Hyprland default 0; looknfeel.lua explicitly sets
+  // allow_tearing = false. Same restore contract as the look toggle.
+  readonly property string gamingFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/oma-swiss-gaming-mode.lua"
+  property bool gamingOn: false
+
+  readonly property string gamingLua: [
+    "-- glasschan.oma-swiss: gaming mode.",
+    "-- Exists = VRR (misc:vrr = 1) and tearing (general:allow_tearing = true)",
+    "-- apply on every Hyprland config load; remove the file and reload to",
+    "-- restore the Omarchy stock values (vrr 0, tearing false).",
+    "hl.config({",
+    "  misc = {",
+    "    vrr = 1,",
+    "  },",
+    "  general = {",
+    "    allow_tearing = true,",
+    "  },",
+    "})",
+    ""
+  ].join("\n")
+
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 8 codepoints
-  // this plugin uses (4 KB). Rebuild it from the upstream webfont when an icon
-  // changes:
-  //   python -m fontTools.subset tabler-icons.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57 \
+  // so the bundled tabler-icons.ttf is a subset holding only the 14 codepoints
+  // this plugin uses (6 KB). Rebuild it from the upstream webfont (fetch
+  // dist/fonts/tabler-icons.ttf from @tabler/icons-webfont, e.g. on
+  // jsdelivr) when an icon changes:
+  //   python -m fontTools.subset tabler-icons-full.ttf \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through
@@ -182,9 +212,16 @@ BarWidget {
 
   // Stateless one-shot capture launchers. Labels/tips are keys into the
   // strings table (rendered through tr()) so the UI language switch covers
-  // them too. The record entry checks for a live recording at click time
-  // (one pgrep, no polling) so the same button starts and stops. Binaries
-  // are Omarchy v4 stock.
+  // them too. The record and webcam entries check for a live recording at
+  // click time (one pgrep, no polling) so the same button starts and stops.
+  // Both stop arms target omarchy-capture-screenrecording --stop-recording —
+  // the binary that owns the recording flag: the webcam wrapper parses no
+  // arguments (a passed --stop-recording is silently dropped) and exits
+  // outright with no webcam connected or a cancelled device menu (reviewer
+  // finding, 2026-08-30). The start arms differ: plain vs webcam wrapper.
+  // They share the gpu-screen-recorder process namespace, so either button
+  // stops a recording of either kind — accepted. Binaries are Omarchy v4
+  // stock.
   readonly property var quickActions: [
     { id: "region", icon: "\uF201", label: "qa_region_l", tip: "qa_region_t",
       command: ["omarchy-capture-screenshot", "region"] },
@@ -196,9 +233,14 @@ BarWidget {
       command: ["sh", "-c", "pkill hyprpicker || hyprpicker -a"] },
     { id: "ocr", icon: "\uFCC3", label: "qa_ocr_l", tip: "qa_ocr_t",
       command: ["env", "OMARCHY_OCR_LANGS=eng+chi_tra", "omarchy-capture-text"] },
+    { id: "qr", icon: "\uEB11", label: "qa_qr_l", tip: "qa_qr_t",
+      command: ["omarchy-capture-qr"] },
     { id: "record", icon: "\uF452", label: "qa_record_l", tip: "qa_record_t",
       command: ["sh", "-c",
-        "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording --stop-recording || omarchy-capture-screenrecording"] }
+        "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording --stop-recording || omarchy-capture-screenrecording"] },
+    { id: "webcam", icon: "\uEE76", label: "qa_webcam_l", tip: "qa_webcam_t",
+      command: ["sh", "-c",
+        "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording --stop-recording || omarchy-capture-screenrecording-with-webcam"] }
   ]
 
   function shellQuote(arg) {
@@ -243,63 +285,139 @@ BarWidget {
 
   // ---- UI language --------------------------------------------------------------
 
-  // Panel language: "en" or "zh" (Traditional Chinese). Every panel string
-  // resolves through tr(), so flipping uiLang re-renders the whole view.
-  // Persisted next to last-aspect so the choice survives reloads and every
-  // monitor's instance stays in sync via the file watch.
+  // Panel language: "en", "zh" (Traditional Chinese), "ja" or "ko". Every
+  // panel string resolves through tr(), so flipping uiLang re-renders the
+  // whole view. Persisted next to last-aspect so the choice survives reloads
+  // and every monitor's instance stays in sync via the file watch. tr()
+  // falls back to en for any missing key, so a partially translated language
+  // never renders a raw key.
   readonly property string langPath: stateDir + "/lang"
   property string uiLang: "en"
+  readonly property var langCodes: ["en", "zh", "ja", "ko"]
 
   // Parenthesized: a multiline object literal in a QML binding needs the
-  // parens, or the leading `{` parses as a binding block.
+  // parens, or the leading `{` parses as a binding block. The four blocks
+  // MUST keep full key parity — checkStringParity() fails loudly at load
+  // time if any drifts. Registers: zh is 書面語 (standard written Chinese,
+  // never Cantonese colloquialisms — standing user rule); ja is standard
+  // polite です・ます体; ko is standard formal 합쇼체. No slang; never
+  // mention macOS.
   readonly property var strings: ({
     en: {
-      sec_keyboard: "KEYBOARD",
-      sec_aspect: "WINDOW ASPECT",
-      sec_looks: "LOOK & FEEL",
       sec_actions: "QUICK ACTIONS",
+      sec_aspect: "WINDOW ASPECT",
+      sec_toggles: "TOGGLES",
       swap_label: "Swap Left Super / Left Alt",
       swap_desc: "Built-in keyboard only. External keyboards keep their stock mapping.",
-      off: "Off",
-      width: "Width", height: "Height", apply: "Apply",
-      active: "Active", custom: "custom", offState: "off",
-      pin_label: "Pin to hotkey",
-      pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
+      gaming_label: "Gaming mode",
+      gaming_desc: "VRR (variable refresh) and tearing allowed for the lowest input latency. Off restores Omarchy defaults.",
       looks_label: "Opinionated Looks",
       looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
-      lang_tip: "切換介面語言 · Switch UI language",
+      pin_label: "Pin ratio hotkey",
+      pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
+      off: "Off",
+      width: "Width", height: "Height", apply: "Apply",
+      active: "Active", custom: "custom", customChip: "Custom…", offState: "off",
+      lang_tip: "Language",
       upd_tip: "v%1 is out — click to update",
       upd_fail: "OmaSwiss update failed",
+      bar_tip_normal: "OmaSwiss\nL: tools · M: screenshot · R: swap",
+      bar_tip_swapped: "OmaSwiss\nL: tools · M: screenshot · R: restore",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
       qa_pick_l: "Picker", qa_pick_t: "Color picker",
       qa_ocr_l: "OCR", qa_ocr_t: "Extract text (English + Chinese)",
-      qa_record_l: "Record", qa_record_t: "Start / stop screen recording"
+      qa_qr_l: "QR", qa_qr_t: "Scan a QR code — decoded text goes to the clipboard",
+      qa_record_l: "Record", qa_record_t: "Start / stop screen recording",
+      qa_webcam_l: "Webcam", qa_webcam_t: "Start / stop screen recording with your webcam"
     },
     zh: {
-      sec_keyboard: "鍵盤",
-      sec_aspect: "視窗比例",
-      sec_looks: "外觀",
       sec_actions: "快捷動作",
+      sec_aspect: "視窗比例",
+      sec_toggles: "切換",
       swap_label: "左 Super／左 Alt 互換",
       swap_desc: "只影響內置鍵盤；外接鍵盤保持原本設定。",
-      off: "關",
-      width: "寬", height: "高", apply: "套用",
-      active: "目前", custom: "自訂", offState: "關閉",
-      pin_label: "固定快捷鍵",
-      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
+      gaming_label: "遊戲模式",
+      gaming_desc: "啟用 VRR（可變更新率）並允許畫面撕裂，降低輸入延遲；關閉即還原 Omarchy 預設。",
       looks_label: "Opinionated Looks",
       looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
-      lang_tip: "切換介面語言 · Switch UI language",
+      pin_label: "固定比例快捷鍵",
+      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
+      off: "關",
+      width: "寬", height: "高", apply: "套用",
+      active: "目前", custom: "自訂", customChip: "自訂…", offState: "關閉",
+      lang_tip: "介面語言",
       upd_tip: "新版本 v%1 可用，點擊更新",
       upd_fail: "OmaSwiss 更新失敗",
+      bar_tip_normal: "OmaSwiss\n左鍵 工具板 · 中鍵 截圖 · 右鍵 互換",
+      bar_tip_swapped: "OmaSwiss\n左鍵 工具板 · 中鍵 截圖 · 右鍵 還原互換",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
       qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
       qa_pick_l: "取色", qa_pick_t: "螢幕取色器",
       qa_ocr_l: "OCR", qa_ocr_t: "OCR 文字辨識（中英）",
-      qa_record_l: "錄影", qa_record_t: "開始／停止螢幕錄影"
+      qa_qr_l: "QR 碼", qa_qr_t: "掃描 QR 碼，解碼內容自動複製到剪貼簿",
+      qa_record_l: "錄影", qa_record_t: "開始／停止螢幕錄影",
+      qa_webcam_l: "攝影機", qa_webcam_t: "開始／停止包含網路攝影機畫面的螢幕錄影"
+    },
+    ja: {
+      sec_actions: "クイックアクション",
+      sec_aspect: "アスペクト比",
+      sec_toggles: "切り替え",
+      swap_label: "左 Super／左 Alt 入れ替え",
+      swap_desc: "内蔵キーボードのみに適用されます。外付けキーボードは既定のままです。",
+      gaming_label: "ゲーミングモード",
+      gaming_desc: "VRR（可変リフレッシュレート）とティアリングを許可し、入力遅延を最小化します。オフで Omarchy の既定に戻ります。",
+      looks_label: "Opinionated Looks",
+      looks_desc: "角丸、半透明 5px の枠、柔らかな影、vibrancy ブラー。オフで Omarchy の既定に戻ります。",
+      pin_label: "比率ホットキーを固定",
+      pin_desc: "SUPER+CTRL+BACKSPACE が、既定の 1:1 の代わりに最後に設定した比率を切り替えます。いつでも元に戻せます。",
+      off: "オフ",
+      width: "幅", height: "高さ", apply: "適用",
+      active: "現在", custom: "カスタム", customChip: "カスタム…", offState: "オフ",
+      lang_tip: "言語",
+      upd_tip: "v%1 がリリースされました — クリックで更新",
+      upd_fail: "OmaSwiss の更新に失敗しました",
+      bar_tip_normal: "OmaSwiss\n左: ツール · 中: スクリーンショット · 右: 入れ替え",
+      bar_tip_swapped: "OmaSwiss\n左: ツール · 中: スクリーンショット · 右: 元に戻す",
+      qa_region_l: "範囲", qa_region_t: "スクリーンショット — 範囲を選択",
+      qa_window_l: "ウィンドウ", qa_window_t: "スクリーンショット — ウィンドウを選択",
+      qa_full_l: "全画面", qa_full_t: "スクリーンショット — 画面全体",
+      qa_pick_l: "スポイト", qa_pick_t: "カラーピッカー",
+      qa_ocr_l: "OCR", qa_ocr_t: "テキスト抽出（英語・中国語）",
+      qa_qr_l: "QR", qa_qr_t: "QR コードをスキャン — 解読したテキストをクリップボードへ",
+      qa_record_l: "録画", qa_record_t: "画面録画の開始／停止",
+      qa_webcam_l: "ウェブカメラ", qa_webcam_t: "ウェブカメラを含む画面録画の開始／停止"
+    },
+    ko: {
+      sec_actions: "빠른 동작",
+      sec_aspect: "창 비율",
+      sec_toggles: "전환",
+      swap_label: "왼쪽 Super／왼쪽 Alt 스왑",
+      swap_desc: "내장 키보드에만 적용됩니다. 외장 키보드는 기본 설정이 유지됩니다.",
+      gaming_label: "게임 모드",
+      gaming_desc: "VRR(가변 새로고침)과 테어링을 허용하여 입력 지연을 최소화합니다. 끄면 Omarchy 기본값으로 돌아갑니다.",
+      looks_label: "Opinionated Looks",
+      looks_desc: "둥근 모서리, 반투명 5px 테두리, 부드러운 그림자, vibrancy 블러. 끄면 Omarchy 기본값으로 돌아갑니다.",
+      pin_label: "비율 단축키 고정",
+      pin_desc: "SUPER+CTRL+BACKSPACE 키가 기본 1:1 대신 마지막으로 설정한 비율을 전환합니다. 언제든지 되돌릴 수 있습니다.",
+      off: "끄기",
+      width: "너비", height: "높이", apply: "적용",
+      active: "현재", custom: "사용자 지정", customChip: "사용자 지정…", offState: "꺼짐",
+      lang_tip: "언어",
+      upd_tip: "v%1 버전이 출시되었습니다 — 클릭하여 업데이트",
+      upd_fail: "OmaSwiss 업데이트 실패",
+      bar_tip_normal: "OmaSwiss\n왼쪽: 도구 · 가운데: 스크린샷 · 오른쪽: 스왑",
+      bar_tip_swapped: "OmaSwiss\n왼쪽: 도구 · 가운데: 스크린샷 · 오른쪽: 스왑 복원",
+      qa_region_l: "영역", qa_region_t: "스크린샷 — 영역 선택",
+      qa_window_l: "창", qa_window_t: "스크린샷 — 창 선택",
+      qa_full_l: "전체", qa_full_t: "스크린샷 — 전체 화면",
+      qa_pick_l: "색 선택", qa_pick_t: "화면 색 선택기",
+      qa_ocr_l: "OCR", qa_ocr_t: "텍스트 추출(영어·중국어)",
+      qa_qr_l: "QR", qa_qr_t: "QR 코드 스캔 — 디코딩된 텍스트를 클립보드에 복사",
+      qa_record_l: "녹화", qa_record_t: "화면 녹화 시작/중지",
+      qa_webcam_l: "웹캠", qa_webcam_t: "웹캠을 포함한 화면 녹화 시작/중지"
     }
   })
 
@@ -311,21 +429,27 @@ BarWidget {
     return strings.en[key]
   }
 
-  // Fail loudly if the two language blocks drift apart: a missing key is
+  // Fail loudly if the language blocks drift apart: a missing key is
   // invisible until that language is rendered, so catch it at load time.
+  // tr() falls back to en regardless, so the panel never shows a raw key —
+  // this only keeps the blocks honest.
   function checkStringParity() {
-    for (var k in strings.en)
-      if (strings.zh[k] === undefined) console.warn("oma-swiss: zh missing key", k)
-    for (var k2 in strings.zh)
-      if (strings.en[k2] === undefined) console.warn("oma-swiss: en missing key", k2)
+    for (var i = 0; i < langCodes.length; i++) {
+      var code = langCodes[i]
+      for (var k in strings.en)
+        if (strings[code][k] === undefined) console.warn("oma-swiss:", code, "missing key", k)
+      for (var k2 in strings[code])
+        if (strings.en[k2] === undefined) console.warn("oma-swiss: en missing key", k2)
+    }
   }
 
+  // IPC `lang` with no args cycles the four languages.
   function toggleLang() {
-    setLang(uiLang === "en" ? "zh" : "en")
+    setLang(langCodes[(langCodes.indexOf(uiLang) + 1) % langCodes.length])
   }
 
   function setLang(lang) {
-    if (lang !== "en" && lang !== "zh") return
+    if (langCodes.indexOf(lang) === -1) return
     console.log("oma-swiss: ui lang", lang)
     uiLang = lang
     langFile.setText(lang)
@@ -340,8 +464,17 @@ BarWidget {
   // "<epoch-ms> <version>"; empty version = last check failed.
   readonly property string releasesUrl: "https://github.com/glasschan/oma-swiss/releases"
   readonly property string updateCachePath: stateDir + "/update-check"
+  // Release-notes cache for the pending update, written by the update check
+  // (see updateProc) and read below. Unbounded read: documented accepted-risk
+  // policy (user-writable state file, shell side caps the write at 8 KB).
+  readonly property string notesPath: stateDir + "/update-notes"
+  // The co-located manifest: its version drives the badge, and the update
+  // check reads it again shell-side to decide whether release notes are
+  // worth caching.
+  readonly property string manifestPath: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
   property string localVersion: ""
   property string latestVersion: ""
+  property string updateNotes: ""
   property real updateCheckedAt: 0
 
   readonly property bool updateAvailable: semverGreater(latestVersion, localVersion)
@@ -435,6 +568,15 @@ BarWidget {
       "hl.config({ layout = { single_window_aspect_ratio = { " + w + ", " + h + " } } })")
   }
 
+  // The off tail restores the hard-coded Omarchy stock values (vrr 0,
+  // tearing false — see gamingLua above), so the flag removal and the live
+  // reset land as one eval.
+  function evalGaming(on) {
+    return flagEval(gamingFlagPath, on ? gamingLua : null,
+      "hl.config({ misc = { vrr = " + (on ? "1" : "0")
+        + " }, general = { allow_tearing = " + (on ? "true" : "false") + " } })")
+  }
+
   // ---- actions ----------------------------------------------------------------
 
   function toggleSwap() {
@@ -486,6 +628,14 @@ BarWidget {
     else removeLookProc.running = true
   }
 
+  // Flag + compositor move as one through the queued eval slot; the
+  // optimistic flip is corrected by refresh() when the queue goes idle.
+  function setGaming(on) {
+    console.log("oma-swiss: gaming mode", on ? "on" : "off")
+    gamingOn = on
+    evalQueue.enqueue(evalGaming(on))
+  }
+
   function clearAspect() {
     console.log("oma-swiss: aspect off")
     aspectW = 0
@@ -504,6 +654,7 @@ BarWidget {
   function refresh() {
     if (!queryProc.running) queryProc.running = true
     aspectFlagFile.reload()
+    gamingFlagFile.reload()
   }
 
   // The live reading is the only source of truth for the swap: this is the
@@ -571,6 +722,18 @@ BarWidget {
   readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
   function closeForPopoutSwitch() { if (panelLoader.item) panelLoader.item.closeForPopoutSwitch() }
 
+  // Panel sizing policy, consumed by the pure view through root.tool. The
+  // shell's KeyboardPanel.fittedContentHeight bounds the card by the real
+  // anchor-edge geometry (availableCardHeight = screen minus the bar strip
+  // and margins) — that is the ONLY ceiling, deliberately: a fixed
+  // aesthetic cap (the old Style.space(600), and later the notes-flex
+  // machinery that replaced it) clamps the card while the view's Column
+  // keeps its natural height, and everything past the card paints on the
+  // desktop (the 0.4.0 overflow). The view sizes the card to its column's
+  // implicit height and keeps a height clamp + clip on the column as
+  // degenerate-screen containment only. Binding-loop discipline: nothing
+  // in contentHeight's dependency chain may read column.height.
+
   function injectPanel() {
     var target = panelLoader.item
     if (!target) return
@@ -602,7 +765,8 @@ BarWidget {
   //   omarchy-shell glasschan.oma-swiss aspectToggle   off <-> last ratio
   //   omarchy-shell glasschan.oma-swiss pin            pin/unpin the hotkey
   //   omarchy-shell glasschan.oma-swiss look           opinionated looks on/off
-  //   omarchy-shell glasschan.oma-swiss lang           toggle panel language EN/中
+  //   omarchy-shell glasschan.oma-swiss gaming         gaming mode on/off
+  //   omarchy-shell glasschan.oma-swiss lang           cycle panel language en→zh→ja→ko→en
   //   omarchy-shell glasschan.oma-swiss panel          open/close popup
   IpcHandler {
     target: "glasschan.oma-swiss"
@@ -612,6 +776,7 @@ BarWidget {
     function aspectToggle(): void { root.aspectToggle() }
     function pin(): void { root.setPin(!root.pinHotkey) }
     function look(): void { root.setLook(!root.lookOn) }
+    function gaming(): void { root.setGaming(!root.gamingOn) }
     function lang(): void { root.toggleLang() }
     function panel(): void { root.togglePanel() }
     function open(): void { root.open() }
@@ -622,6 +787,7 @@ BarWidget {
         + " last=" + (root.lastW > 0 ? root.lastW + ":" + root.lastH : "none")
         + " pin=" + (root.pinHotkey ? "on" : "off")
         + " look=" + (root.lookOn ? "on" : "off")
+        + " gaming=" + (root.gamingOn ? "on" : "off")
         + " lang=" + root.uiLang
         + " update=" + (root.updateAvailable ? root.latestVersion : "none")
     }
@@ -640,12 +806,16 @@ BarWidget {
     // the urgent color while the swap is on. (The old dimmed-at-rest look
     // came from the retired super-alt-swap plugin.)
     active: root.swapped
-    tooltipText: root.swapped
-      ? "OmaSwiss · Super⇄Alt swapped (right-click restore, left-click tools)"
-      : "OmaSwiss · left-click tools, right-click toggles Super⇄Alt"
+    // Two lines by design — line 1 is the plugin name, line 2 lists all
+    // three buttons (the bar's tooltip Text renders \n natively: no wrap,
+    // no elide, bubble sized to implicitWidth/Height). Localized, short.
+    tooltipText: root.swapped ? root.tr("bar_tip_swapped") : root.tr("bar_tip_normal")
     onPressed: function(b) {
       if (b === Qt.LeftButton) root.togglePanel()
       else if (b === Qt.RightButton) root.toggleSwap()
+      // Stateless region screenshot (runQuickAction rides launchDetached);
+      // the slurp overlay needs a clear screen, so an open panel closes.
+      else if (b === Qt.MiddleButton) root.runQuickAction("region")
     }
   }
 
@@ -775,6 +945,21 @@ BarWidget {
       "rm -f " + shellQuote(root.lookFlagPath) + " && timeout 10 hyprctl reload"]
   }
 
+  // Gaming state mirrors the toggle file's existence, same as the pin and
+  // look files: watching covers the eval-side write (rename fires the
+  // watcher) and manual removal alike. refresh() also reloads this file so
+  // an optimistic flip that a rejected eval never wrote gets corrected when
+  // the queue goes idle.
+  FileView {
+    id: gamingFlagFile
+    path: root.gamingFlagPath
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.gamingOn = true
+    onLoadFailed: root.gamingOn = false
+  }
+
   // One-shot spawner for the quick actions. The actual tool runs detached
   // (see launchDetached); this Process only fires the setsid launch line and
   // exits immediately, so it is never busy and never kills a live tool.
@@ -791,7 +976,7 @@ BarWidget {
     onFileChanged: reload()
     onLoaded: {
       var v = (text() || "").trim()
-      root.uiLang = v === "zh" ? "zh" : "en"
+      root.uiLang = langCodes.indexOf(v) !== -1 ? v : "en"
     }
     onLoadFailed: root.uiLang = "en"
   }
@@ -799,7 +984,7 @@ BarWidget {
   // Local version from the co-located manifest — one static read, no watch.
   FileView {
     id: manifestFile
-    path: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
+    path: root.manifestPath
     printErrors: false
     onLoaded: {
       var m = /"version"\s*:\s*"([^"]+)"/.exec(text() || "")
@@ -825,6 +1010,20 @@ BarWidget {
     }
   }
 
+  // Release notes for the pending update, written only by the update check
+  // (updateProc) and watched so every monitor's instance renders the same
+  // notes. Plain display text only — the panel renders it through
+  // Text.PlainText because release notes are untrusted content.
+  FileView {
+    id: updateNotesFile
+    path: root.notesPath
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.updateNotes = text()
+    onLoadFailed: root.updateNotes = ""
+  }
+
   // One-shot release check, fired only by maybeCheckUpdate (panel open +
   // stale cache). The flock makes a second monitor's instance bow out
   // instead of racing a duplicate fetch and a blank cache stamp. The lock
@@ -838,13 +1037,36 @@ BarWidget {
   // a large or endless response cannot exhaust memory. The result — success
   // or curl failure — restamps the cache, so the worst case is one bounded
   // (--max-time) request per day.
+  //
+  // Release notes ride the same fetch: when the fetched version is newer
+  // than the manifest's ($2), the release body is extracted with jq
+  // (guarded by command -v jq) and truncated by jq to 8192 codepoints —
+  // never mid-UTF-8-sequence, which a byte cap alone would risk on
+  // multibyte bodies; head -c 32768 stays only as a backstop (8192
+  // codepoints cannot exceed 32768 UTF-8 bytes, so it never engages on
+  // valid jq output) — and the result lands on "${1%/*}/update-notes"
+  // through mktemp + atomic mv — the round-2 symlink-safe write pattern.
+  // Any other outcome (fetch failed, jq missing, not newer) removes stale
+  // notes instead. Nothing here can fail the version stamp: the JSON is
+  // echoed for the QML parser before the notes logic runs, and every notes
+  // branch exits 0.
   Process {
     id: updateProc
     command: ["sh", "-c",
       'exec 9<"${1%/*}"; flock -n 9 || exit 42; rm -f -- "$1.lock"; '
-        + "curl -fsS --max-time 5 --max-filesize 262144 https://api.github.com/repos/glasschan/oma-swiss/releases/latest "
-        + "| head -c 262144",
-      "sh", root.updateCachePath]
+        + "out=$(curl -fsS --max-time 5 --max-filesize 262144 https://api.github.com/repos/glasschan/oma-swiss/releases/latest | head -c 262144); "
+        + 'printf %s "$out"; '
+        + 'n="${1%/*}/update-notes"; '
+        + 'if [ -z "$out" ] || ! command -v jq >/dev/null 2>&1; then rm -f -- "$n"; exit 0; fi; '
+        + 'newv=$(printf %s "$out" | jq -r ".tag_name // empty" | sed -e "s/^v//"); '
+        + 'curv=$(jq -r ".version // empty" "$2" 2>/dev/null); '
+        + 'if [ -z "$newv" ] || [ -z "$curv" ]; then rm -f -- "$n"; exit 0; fi; '
+        + 'if [ "$newv" != "$curv" ] && [ "$(printf "%s\\n" "$newv" "$curv" | sort -V | head -n 1)" = "$curv" ]; then '
+        + 'body=$(printf %s "$out" | jq -j ".body // empty | .[0:8192]" | head -c 32768); '
+        + 't=$(mktemp -- "${1%/*}/.oma-swiss.XXXXXX") || exit 0; '
+        + 'printf %s "$body" >"$t" && mv -f -- "$t" "$n" || rm -f -- "$t"; '
+        + 'else rm -f -- "$n"; fi',
+      "sh", root.updateCachePath, root.manifestPath]
     stdout: StdioCollector {
       id: updateOut
       waitForEnd: true
