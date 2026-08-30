@@ -7,10 +7,11 @@ import qs.Ui
 // aspect chips derive their selection from the flag-file-mirrored aspectW/H,
 // so the stock SUPER+CTRL+BACKSPACE toggle and CLI calls are reflected here
 // too. Every user-facing string resolves through tool.tr(), which makes the
-// top-right 中/EN button re-render the whole panel. Four sections in one
-// column, quick actions first: stateless quick capture actions (the panel
-// closes on fire so selection overlays get a clear screen), then keyboard
-// swap, window aspect (presets, custom, pin), and opinionated looks.
+// top-right 中/EN button re-render the whole panel. Five sections in one
+// column: release notes for a pending update (only while the upgrade badge
+// shows), stateless quick capture actions (the panel closes on fire so
+// selection overlays get a clear screen), keyboard swap, window aspect
+// (presets, custom, pin), opinionated looks, and gaming mode.
 Panel {
   id: root
   moduleName: "glasschan.oma-swiss"
@@ -90,13 +91,41 @@ Panel {
           }
         }
 
-        // Six equal cells: icon button over a caption label. Stateless
-        // launchers — the tool owns the command list, this only renders it.
-        Row {
+        // Release notes for the pending update, shown only while the upgrade
+        // badge is up. Plain text only (notes are untrusted content — never
+        // rich text), capped height, scrollable when the body runs longer.
+        Flickable {
+          id: notesFlick
+          visible: root.tool && root.tool.updateAvailable
+            && root.tool.updateNotes !== undefined && root.tool.updateNotes !== ""
+          width: parent.width
+          height: visible ? Math.min(Style.space(140), notesText.implicitHeight) : 0
+          clip: true
+          contentWidth: width
+          contentHeight: notesText.implicitHeight
+          interactive: contentHeight > height
+
+          Text {
+            id: notesText
+            width: notesFlick.width
+            text: root.tool && root.tool.updateNotes ? root.tool.updateNotes : ""
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            color: Qt.darker(root.barForeground, 1.4)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+        }
+
+        // Eight cells in two rows of four: icon button over a caption label.
+        // Stateless launchers — the tool owns the command list, this only
+        // renders it.
+        Grid {
           id: actionsRow
           width: parent.width
+          columns: 4
           spacing: Style.spacing.controlGap
-          readonly property real cellW: (width - (quickActions.count - 1) * spacing) / Math.max(1, quickActions.count)
+          readonly property real cellW: (width - (columns - 1) * spacing) / columns
 
           Repeater {
             id: quickActions
@@ -250,6 +279,18 @@ Panel {
           description: root.t("looks_desc")
           checked: root.tool && root.tool.lookOn
           onClicked: if (root.tool) root.tool.setLook(!root.tool.lookOn)
+        }
+
+        PanelSeparator {}
+
+        PanelSectionHeader { text: root.t("sec_gaming") }
+
+        Toggle {
+          width: parent.width
+          label: root.t("gaming_label")
+          description: root.t("gaming_desc")
+          checked: root.tool && root.tool.gamingOn
+          onClicked: if (root.tool) root.tool.setGaming(!root.tool.gamingOn)
         }
 
       }
