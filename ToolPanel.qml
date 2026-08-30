@@ -69,7 +69,7 @@ Panel {
         font.pixelSize: Style.font.body
         font.bold: true
         elide: Text.ElideRight
-        width: parent.width - (iconGlyphText.width + parent.spacing) * 2 - track.width
+        width: parent.width - iconGlyphText.width - track.width - parent.spacing * 2
         anchors.verticalCenter: parent.verticalCenter
       }
 
@@ -115,13 +115,20 @@ Panel {
     && root.tool.updateNotes !== undefined && root.tool.updateNotes !== "")
 
   // View-transient UI state, not app state: whether the custom W/H/Apply row
-  // exists. Opens from the 自訂… chip, closes via 關 or any preset; the
-  // initial binding auto-reveals while the live ratio is a custom value
-  // (no preset match), with the remembered prefill in the fields. Every
-  // click assigns it and breaks the binding, so user intent sticks.
-  property bool customRevealed: root.tool
-    ? (root.tool.aspectOn && !root.tool.aspectIsPreset(root.tool.aspectW, root.tool.aspectH))
-    : false
+  // exists. Derived from the REMEMBERED last ratio (last-aspect), not the
+  // live one, and re-derived on EVERY panel open — the loader never
+  // deactivates, so a one-shot initial binding would stay broken after the
+  // first click. Within a session an explicit chip/preset click overrides
+  // until the next open.
+  property bool customRevealed: false
+
+  onOpenedChanged: if (opened) rederiveCustomReveal()
+
+  function rederiveCustomReveal() {
+    var t = root.tool
+    root.customRevealed = !!t && t.lastW > 0 && t.lastH > 0
+      && !t.aspectIsPreset(t.lastW, t.lastH)
+  }
 
   // The header button shows the ACTIVE language as a compact glyph; the
   // full self-named list lives in the menu.
@@ -461,8 +468,9 @@ Panel {
     }
   }
 
-  // Interface-language menu — QQC2, rendered in the shell overlay exactly
-  // like the tooltips. Items are self-named; the active one carries the
+  // Interface-language menu — QQC2. Like the tooltips, it renders in the
+  // Qt overlay layer (the same popup mechanism), so it escapes the column's
+  // clip. Items are self-named; the active one carries the
   // checkmark. Selecting goes through the host's setLang (the pure-view
   // host-call rule: root.tool, never root) and the menu closes itself.
   QQC.Menu {
@@ -482,7 +490,7 @@ Panel {
       property string code: ""
       property string name: ""
       property bool active: false
-      signal picked(string code)
+      signal picked(string lang)
       height: Style.space(30)
       leftPadding: Style.spacing.controlPaddingX
       rightPadding: Style.spacing.controlPaddingX

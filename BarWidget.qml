@@ -394,7 +394,7 @@ BarWidget {
       sec_actions: "빠른 동작",
       sec_aspect: "창 비율",
       sec_toggles: "전환",
-      swap_label: "왼쪽 Super/왼쪽 Alt 스왑",
+      swap_label: "왼쪽 Super／왼쪽 Alt 스왑",
       swap_desc: "내장 키보드에만 적용됩니다. 외장 키보드는 기본 설정이 유지됩니다.",
       gaming_label: "게임 모드",
       gaming_desc: "VRR(가변 새로고침)과 테어링을 허용하여 입력 지연을 최소화합니다. 끄면 Omarchy 기본값으로 돌아갑니다.",
@@ -406,7 +406,7 @@ BarWidget {
       width: "너비", height: "높이", apply: "적용",
       active: "현재", custom: "사용자 지정", customChip: "사용자 지정…", offState: "꺼짐",
       lang_tip: "언어",
-      upd_tip: "v%1 릴리스됨 — 클릭하여 업데이트",
+      upd_tip: "v%1 버전이 출시되었습니다 — 클릭하여 업데이트",
       upd_fail: "OmaSwiss 업데이트 실패",
       bar_tip_normal: "OmaSwiss · 왼쪽: 도구 · 오른쪽: 스왑",
       bar_tip_swapped: "OmaSwiss · 스왑됨 · 오른쪽: 복원",
@@ -766,7 +766,7 @@ BarWidget {
   //   omarchy-shell glasschan.oma-swiss pin            pin/unpin the hotkey
   //   omarchy-shell glasschan.oma-swiss look           opinionated looks on/off
   //   omarchy-shell glasschan.oma-swiss gaming         gaming mode on/off
-  //   omarchy-shell glasschan.oma-swiss lang           cycle panel language en→zh→ja→ko
+  //   omarchy-shell glasschan.oma-swiss lang           cycle panel language en→zh→ja→ko→en
   //   omarchy-shell glasschan.oma-swiss panel          open/close popup
   IpcHandler {
     target: "glasschan.oma-swiss"

@@ -41,7 +41,7 @@ omarchy-shell glasschan.oma-swiss aspectToggle   # 關閉 <-> 上次比例
 omarchy-shell glasschan.oma-swiss pin            # 固定／解除快捷鍵
 omarchy-shell glasschan.oma-swiss look           # 外觀開／關
 omarchy-shell glasschan.oma-swiss gaming         # 遊戲模式開／關
-omarchy-shell glasschan.oma-swiss lang           # 循環切換介面語言 en→zh→ja→ko
+omarchy-shell glasschan.oma-swiss lang           # 循環切換介面語言 en→zh→ja→ko→en
 omarchy-shell glasschan.oma-swiss panel          # 開／關面板
 omarchy-shell glasschan.oma-swiss status         # 目前狀態
 ```
