@@ -57,6 +57,6 @@ omarchy plugin remove glasschan.oma-swiss   # 移除
 
 ## 依賴
 
-無須額外安裝 —— 一切隨 Omarchy v4 內附：Hyprland 0.56+、`omarchy-capture-screenshot`（slurp）、`omarchy-capture-text`（OCR）、`omarchy-capture-qr`（zbar）、`omarchy-capture-screenrecording`（gpu-screen-recorder，含網路攝影機與否均可）及 `hyprpicker`。若有 `jq`（標準 Omarchy 安裝內建），待更新的面板會一併顯示新版本的更新說明；沒有亦不影響更新檢查。
+無須額外安裝 —— 一切隨 Omarchy v4 內附：Hyprland 0.56+、`omarchy-capture-screenshot`（slurp）、`omarchy-capture-text`（OCR）、`omarchy-capture-qr`（zbar）、`omarchy-capture-screenrecording` 與 `omarchy-capture-screenrecording-with-webcam`（gpu-screen-recorder）及 `hyprpicker`。若有 `jq`（標準 Omarchy 安裝內建），待更新的面板會一併顯示新版本的更新說明；沒有亦不影響更新檢查。
 
 MIT。

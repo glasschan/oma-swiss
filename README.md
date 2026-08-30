@@ -88,8 +88,9 @@ deletes the file, so nothing outlives the plugin.
 
 None to install — everything ships with Omarchy v4: Hyprland 0.56+,
 `omarchy-capture-screenshot` (slurp), `omarchy-capture-text` (OCR),
-`omarchy-capture-qr` (zbar), `omarchy-capture-screenrecording`
-(gpu-screen-recorder, with or without webcam), and `hyprpicker`.
+`omarchy-capture-qr` (zbar), `omarchy-capture-screenrecording` and
+`omarchy-capture-screenrecording-with-webcam` (gpu-screen-recorder), and
+`hyprpicker`.
 `jq` (present on a stock Omarchy install) is used, when available, to show
 release notes for pending updates — the update check works without it.
 

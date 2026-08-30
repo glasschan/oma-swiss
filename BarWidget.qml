@@ -213,8 +213,13 @@ BarWidget {
   // Stateless one-shot capture launchers. Labels/tips are keys into the
   // strings table (rendered through tr()) so the UI language switch covers
   // them too. The record and webcam entries check for a live recording at
-  // click time (one pgrep, no polling) so the same button starts and stops;
-  // they share the gpu-screen-recorder process namespace, so either button
+  // click time (one pgrep, no polling) so the same button starts and stops.
+  // Both stop arms target omarchy-capture-screenrecording --stop-recording —
+  // the binary that owns the recording flag: the webcam wrapper parses no
+  // arguments (a passed --stop-recording is silently dropped) and exits
+  // outright with no webcam connected or a cancelled device menu (reviewer
+  // finding, 2026-08-30). The start arms differ: plain vs webcam wrapper.
+  // They share the gpu-screen-recorder process namespace, so either button
   // stops a recording of either kind — accepted. Binaries are Omarchy v4
   // stock.
   readonly property var quickActions: [
@@ -235,7 +240,7 @@ BarWidget {
         "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording --stop-recording || omarchy-capture-screenrecording"] },
     { id: "webcam", icon: "\uEE76", label: "qa_webcam_l", tip: "qa_webcam_t",
       command: ["sh", "-c",
-        "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording-with-webcam --stop-recording || omarchy-capture-screenrecording-with-webcam"] }
+        "pgrep -f '^gpu-screen-recorder' >/dev/null && omarchy-capture-screenrecording --stop-recording || omarchy-capture-screenrecording-with-webcam"] }
   ]
 
   function shellQuote(arg) {
@@ -344,7 +349,7 @@ BarWidget {
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
       qa_pick_l: "取色", qa_pick_t: "螢幕取色器",
       qa_ocr_l: "OCR", qa_ocr_t: "OCR 文字辨識（中英）",
-      qa_qr_l: "QR碼", qa_qr_t: "掃描 QR 碼，解碼內容自動複製到剪貼簿",
+      qa_qr_l: "QR 碼", qa_qr_t: "掃描 QR 碼，解碼內容自動複製到剪貼簿",
       qa_record_l: "錄影", qa_record_t: "開始／停止螢幕錄影",
       qa_webcam_l: "攝影機", qa_webcam_t: "開始／停止包含網路攝影機畫面的螢幕錄影"
     }
@@ -950,12 +955,16 @@ BarWidget {
   //
   // Release notes ride the same fetch: when the fetched version is newer
   // than the manifest's ($2), the release body is extracted with jq
-  // (guarded by command -v jq), capped at 8 KB, and landed on
-  // "${1%/*}/update-notes" through mktemp + atomic mv — the round-2
-  // symlink-safe write pattern. Any other outcome (fetch failed, jq
-  // missing, not newer) removes stale notes instead. Nothing here can fail
-  // the version stamp: the JSON is echoed for the QML parser before the
-  // notes logic runs, and every notes branch exits 0.
+  // (guarded by command -v jq) and truncated by jq to 8192 codepoints —
+  // never mid-UTF-8-sequence, which a byte cap alone would risk on
+  // multibyte bodies; head -c 32768 stays only as a backstop (8192
+  // codepoints cannot exceed 32768 UTF-8 bytes, so it never engages on
+  // valid jq output) — and the result lands on "${1%/*}/update-notes"
+  // through mktemp + atomic mv — the round-2 symlink-safe write pattern.
+  // Any other outcome (fetch failed, jq missing, not newer) removes stale
+  // notes instead. Nothing here can fail the version stamp: the JSON is
+  // echoed for the QML parser before the notes logic runs, and every notes
+  // branch exits 0.
   Process {
     id: updateProc
     command: ["sh", "-c",
@@ -968,7 +977,7 @@ BarWidget {
         + 'curv=$(jq -r ".version // empty" "$2" 2>/dev/null); '
         + 'if [ -z "$newv" ] || [ -z "$curv" ]; then rm -f -- "$n"; exit 0; fi; '
         + 'if [ "$newv" != "$curv" ] && [ "$(printf "%s\\n" "$newv" "$curv" | sort -V | head -n 1)" = "$curv" ]; then '
-        + 'body=$(printf %s "$out" | jq -r ".body // empty" | head -c 8192); '
+        + 'body=$(printf %s "$out" | jq -j ".body // empty | .[0:8192]" | head -c 32768); '
         + 't=$(mktemp -- "${1%/*}/.oma-swiss.XXXXXX") || exit 0; '
         + 'printf %s "$body" >"$t" && mv -f -- "$t" "$n" || rm -f -- "$t"; '
         + 'else rm -f -- "$n"; fi',
