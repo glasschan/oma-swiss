@@ -248,7 +248,12 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             iconText: root.langTag
             tooltipText: root.t("lang_tip")
-            onClicked: langMenu.popup(langButton, 0, langButton.height + Style.space(4))
+            // Right-aligned: the panel anchors at the screen's top-right
+            // corner, so a left-aligned menu runs off the panel's edge.
+            // width is set explicitly (Style.space(160)), so it is stable
+            // pre-popup and the arithmetic needs no measuring hook.
+            onClicked: langMenu.popup(langButton, langButton.width - langMenu.width,
+              langButton.height + Style.space(4))
           }
         }
 
