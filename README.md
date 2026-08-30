@@ -31,8 +31,8 @@ from one popup that costs nothing while you're not using it.
 
 ## The five tools
 
-- **Super ⇄ Alt swap** — Mac-style modifier keys on the built-in laptop
-  keyboard, whenever you want them. External keyboards are never touched.
+- **Super ⇄ Alt swap** — trade the left Super and Alt keys on the built-in
+  laptop keyboard, whenever you want. External keyboards are never touched.
 - **Single-window aspect ratio** — keep the lone window honest: 1:1, 4:3,
   3:2, and 16:9 presets, or any custom `W:H` up to 64. Your ratio survives
   reloads and logins, and the stock `SUPER+CTRL+BACKSPACE` binding works
@@ -54,7 +54,9 @@ from one popup that costs nothing while you're not using it.
 - **Left-click** the bar icon: open the tools popup.
 - **Right-click**: instant Super⇄Alt toggle.
 - **Middle-click**: instant region screenshot (Esc cancels).
-- **Pin the hotkey** (optional): while pinned, `SUPER+CTRL+BACKSPACE`
+- **Hover**: a two-line hint lists what each mouse button does, localized
+  with the panel.
+- **Pin the ratio hotkey** (optional): while pinned, `SUPER+CTRL+BACKSPACE`
   cycles off ⇄ *your last ratio* instead of the stock fixed 1:1 — set 16:9
   in the panel and the hotkey follows. Unpinning restores the previous
   binding exactly, and the Omarchy menu's own ratio entry is never touched.
@@ -66,7 +68,7 @@ omarchy-shell glasschan.oma-swiss toggle         # Super⇄Alt on/off
 omarchy-shell glasschan.oma-swiss aspect 21 10   # any custom ratio
 omarchy-shell glasschan.oma-swiss aspectOff      # ratio off
 omarchy-shell glasschan.oma-swiss aspectToggle   # off <-> last ratio
-omarchy-shell glasschan.oma-swiss pin            # pin/unpin the hotkey
+omarchy-shell glasschan.oma-swiss pin            # pin/unpin the ratio hotkey
 omarchy-shell glasschan.oma-swiss look           # looks on/off
 omarchy-shell glasschan.oma-swiss gaming         # gaming mode on/off
 omarchy-shell glasschan.oma-swiss lang           # cycle UI language en→zh→ja→ko→en

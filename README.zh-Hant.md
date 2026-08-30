@@ -18,7 +18,7 @@
 
 ## 五個工具
 
-- **Super ⇄ Alt 互換** —— 隨時在筆電內置鍵盤上使用 Mac 式修飾鍵；外接鍵盤完全不受影響。
+- **Super ⇄ Alt 互換** —— 隨時互換筆電內置鍵盤的左 Super 與左 Alt；外接鍵盤完全不受影響。
 - **單一視窗比例** —— 1:1、4:3、3:2、16:9 預設，或自訂 `W:H`（最高 64）。比例在 reload 與登入後保持不變，原生的 `SUPER+CTRL+BACKSPACE` 綁定亦可同時使用。
 - **Opinionated Looks** —— 圓角、半透明 5px 邊框、柔和陰影與 vibrancy blur，一鍵切換；關閉即完全還原 Omarchy 預設。
 - **遊戲模式** —— 一鍵啟用 VRR（可變更新率）並允許畫面撕裂，追求最低輸入延遲；關閉即完全還原 Omarchy 預設值。
@@ -29,6 +29,7 @@
 - **左擊** bar icon：開啟工具面板。
 - **右擊**：即時切換 Super⇄Alt。
 - **中鍵點擊**：即時區域截圖（按 Esc 取消）。
+- **懸停**：兩行提示列出三個滑鼠鍵的功能，語言跟隨面板設定。
 - **固定比例快捷鍵**（可選）：固定後 `SUPER+CTRL+BACKSPACE` 會在「關閉 ⇄ 上次比例」之間切換，而非原生的固定 1:1 —— 在面板設好 16:9，快捷鍵便跟隨。解除固定即完整還原先前的綁定，Omarchy 選單內建的比例項目亦不受影響。
 
 每個命令亦可直接從 shell 執行，可綁定至任何按鍵：
@@ -38,7 +39,7 @@ omarchy-shell glasschan.oma-swiss toggle         # Super⇄Alt 開／關
 omarchy-shell glasschan.oma-swiss aspect 21 10   # 任何自訂比例
 omarchy-shell glasschan.oma-swiss aspectOff      # 關閉比例
 omarchy-shell glasschan.oma-swiss aspectToggle   # 關閉 <-> 上次比例
-omarchy-shell glasschan.oma-swiss pin            # 固定／解除快捷鍵
+omarchy-shell glasschan.oma-swiss pin            # 固定／解除比例快捷鍵
 omarchy-shell glasschan.oma-swiss look           # 外觀開／關
 omarchy-shell glasschan.oma-swiss gaming         # 遊戲模式開／關
 omarchy-shell glasschan.oma-swiss lang           # 循環切換介面語言 en→zh→ja→ko→en
