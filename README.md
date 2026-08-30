@@ -21,10 +21,11 @@ from one popup that costs nothing while you're not using it.
 - **Survives updates and relogins.** Toggles write the same state files
   Omarchy itself uses, so your settings hold across reloads, reboots, and
   `omarchy update` — and the Omarchy menu keeps working alongside.
-- **中 / EN.** The whole panel switches between English and 繁體中文 with
-  one button.
+- **Four UI languages.** English, 繁體中文, 日本語, and 한국어 from one
+  header menu. The Japanese and Korean translations are machine-assisted —
+  improvements welcome via PR.
 - **Told when an update lands.** A badge on the panel marks new GitHub
-  releases, with the release notes right under it; one click updates the
+  releases, with the release notes in its tooltip; one click updates the
   plugin on git installs. The check runs at most once a day — never on a
   timer.
 
@@ -68,7 +69,7 @@ omarchy-shell glasschan.oma-swiss aspectToggle   # off <-> last ratio
 omarchy-shell glasschan.oma-swiss pin            # pin/unpin the hotkey
 omarchy-shell glasschan.oma-swiss look           # looks on/off
 omarchy-shell glasschan.oma-swiss gaming         # gaming mode on/off
-omarchy-shell glasschan.oma-swiss lang           # EN <-> 中
+omarchy-shell glasschan.oma-swiss lang           # cycle UI language en→zh→ja→ko
 omarchy-shell glasschan.oma-swiss panel          # open/close popup
 omarchy-shell glasschan.oma-swiss status         # what's on right now
 ```

@@ -13,8 +13,8 @@
 - **一個面板，毋須終端機。** 每個工具都是一按即用的開關；右擊 bar icon 可即時切換 Super⇄Alt。
 - **閒置成本：一個 icon。** 沒有常駐程序、沒有計時器、沒有輪詢。面板關閉時，插件形同休眠。
 - **更新與重新登入後依然生效。** 所有開關只寫入 Omarchy 自身的狀態檔，設定在 reload、重開機與 `omarchy update` 之後原封不動，Omarchy 選單亦照常運作。
-- **中／EN。** 整個面板一按切換英文與繁體中文。
-- **有新版本自動提示。** GitHub 上有新 release 時，面板會出現升級標示並附上更新說明；一按即自動更新（git 安裝），查詢每天最多一次，絕無輪詢。
+- **四種介面語言。** 可從面板右上角的選單切換 English、繁體中文、日本語、한국어。日文與韓文為機器輔助翻譯，歡迎透過 PR 改善。
+- **有新版本自動提示。** GitHub 上有新 release 時，面板會出現升級標示，游標停在標示上即可檢視更新說明；一按即自動更新（git 安裝），查詢每天最多一次，絕無輪詢。
 
 ## 五個工具
 
@@ -41,7 +41,7 @@ omarchy-shell glasschan.oma-swiss aspectToggle   # 關閉 <-> 上次比例
 omarchy-shell glasschan.oma-swiss pin            # 固定／解除快捷鍵
 omarchy-shell glasschan.oma-swiss look           # 外觀開／關
 omarchy-shell glasschan.oma-swiss gaming         # 遊戲模式開／關
-omarchy-shell glasschan.oma-swiss lang           # EN <-> 中
+omarchy-shell glasschan.oma-swiss lang           # 循環切換介面語言 en→zh→ja→ko
 omarchy-shell glasschan.oma-swiss panel          # 開／關面板
 omarchy-shell glasschan.oma-swiss status         # 目前狀態
 ```
