@@ -192,12 +192,12 @@ BarWidget {
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 10 codepoints
+  // so the bundled tabler-icons.ttf is a subset holding only the 14 codepoints
   // this plugin uses (6 KB). Rebuild it from the upstream webfont (fetch
   // dist/fonts/tabler-icons.ttf from @tabler/icons-webfont, e.g. on
   // jsdelivr) when an icon changes:
   //   python -m fontTools.subset tabler-icons-full.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76 \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through
@@ -285,36 +285,44 @@ BarWidget {
 
   // ---- UI language --------------------------------------------------------------
 
-  // Panel language: "en" or "zh" (Traditional Chinese). Every panel string
-  // resolves through tr(), so flipping uiLang re-renders the whole view.
-  // Persisted next to last-aspect so the choice survives reloads and every
-  // monitor's instance stays in sync via the file watch.
+  // Panel language: "en", "zh" (Traditional Chinese), "ja" or "ko". Every
+  // panel string resolves through tr(), so flipping uiLang re-renders the
+  // whole view. Persisted next to last-aspect so the choice survives reloads
+  // and every monitor's instance stays in sync via the file watch. tr()
+  // falls back to en for any missing key, so a partially translated language
+  // never renders a raw key.
   readonly property string langPath: stateDir + "/lang"
   property string uiLang: "en"
+  readonly property var langCodes: ["en", "zh", "ja", "ko"]
 
   // Parenthesized: a multiline object literal in a QML binding needs the
-  // parens, or the leading `{` parses as a binding block.
+  // parens, or the leading `{` parses as a binding block. The four blocks
+  // MUST keep full key parity — checkStringParity() fails loudly at load
+  // time if any drifts. Registers: zh is 書面語 (standard written Chinese,
+  // never Cantonese colloquialisms — standing user rule); ja is standard
+  // polite です・ます体; ko is standard formal 합쇼체. No slang; never
+  // mention macOS.
   readonly property var strings: ({
     en: {
-      sec_keyboard: "KEYBOARD",
-      sec_aspect: "WINDOW ASPECT",
-      sec_looks: "LOOK & FEEL",
-      sec_gaming: "GAMING",
       sec_actions: "QUICK ACTIONS",
+      sec_aspect: "WINDOW ASPECT",
+      sec_toggles: "TOGGLES",
       swap_label: "Swap Left Super / Left Alt",
       swap_desc: "Built-in keyboard only. External keyboards keep their stock mapping.",
-      off: "Off",
-      width: "Width", height: "Height", apply: "Apply",
-      active: "Active", custom: "custom", offState: "off",
-      pin_label: "Pin to hotkey",
-      pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
-      looks_label: "Opinionated Looks",
-      looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
       gaming_label: "Gaming mode",
       gaming_desc: "VRR (variable refresh) and tearing allowed for the lowest input latency. Off restores Omarchy defaults.",
-      lang_tip: "切換介面語言 · Switch UI language",
+      looks_label: "Opinionated Looks",
+      looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
+      pin_label: "Pin to hotkey",
+      pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
+      off: "Off",
+      width: "Width", height: "Height", apply: "Apply",
+      active: "Active", custom: "custom", customChip: "Custom…", offState: "off",
+      lang_tip: "Language",
       upd_tip: "v%1 is out — click to update",
       upd_fail: "OmaSwiss update failed",
+      bar_tip_normal: "OmaSwiss · left: tools · right: swap",
+      bar_tip_swapped: "OmaSwiss · swapped · right: restore",
       qa_region_l: "Region", qa_region_t: "Screenshot — select a region",
       qa_window_l: "Window", qa_window_t: "Screenshot — pick a window",
       qa_full_l: "Full", qa_full_t: "Screenshot — whole screen",
@@ -325,25 +333,25 @@ BarWidget {
       qa_webcam_l: "Webcam", qa_webcam_t: "Start / stop screen recording with your webcam"
     },
     zh: {
-      sec_keyboard: "鍵盤",
-      sec_aspect: "視窗比例",
-      sec_looks: "外觀",
-      sec_gaming: "遊戲",
       sec_actions: "快捷動作",
+      sec_aspect: "視窗比例",
+      sec_toggles: "切換",
       swap_label: "左 Super／左 Alt 互換",
       swap_desc: "只影響內置鍵盤；外接鍵盤保持原本設定。",
-      off: "關",
-      width: "寬", height: "高", apply: "套用",
-      active: "目前", custom: "自訂", offState: "關閉",
-      pin_label: "固定快捷鍵",
-      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
-      looks_label: "Opinionated Looks",
-      looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
       gaming_label: "遊戲模式",
       gaming_desc: "啟用 VRR（可變更新率）並允許畫面撕裂，降低輸入延遲；關閉即還原 Omarchy 預設。",
-      lang_tip: "切換介面語言 · Switch UI language",
+      looks_label: "Opinionated Looks",
+      looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
+      pin_label: "固定快捷鍵",
+      pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
+      off: "關",
+      width: "寬", height: "高", apply: "套用",
+      active: "目前", custom: "自訂", customChip: "自訂…", offState: "關閉",
+      lang_tip: "介面語言",
       upd_tip: "新版本 v%1 可用，點擊更新",
       upd_fail: "OmaSwiss 更新失敗",
+      bar_tip_normal: "OmaSwiss · 左：工具 · 右：互換",
+      bar_tip_swapped: "OmaSwiss · 已互換 · 右：還原",
       qa_region_l: "區域", qa_region_t: "截圖 — 選取區域",
       qa_window_l: "視窗", qa_window_t: "截圖 — 選取視窗",
       qa_full_l: "全螢幕", qa_full_t: "截圖 — 整個螢幕",
@@ -352,6 +360,64 @@ BarWidget {
       qa_qr_l: "QR 碼", qa_qr_t: "掃描 QR 碼，解碼內容自動複製到剪貼簿",
       qa_record_l: "錄影", qa_record_t: "開始／停止螢幕錄影",
       qa_webcam_l: "攝影機", qa_webcam_t: "開始／停止包含網路攝影機畫面的螢幕錄影"
+    },
+    ja: {
+      sec_actions: "クイックアクション",
+      sec_aspect: "アスペクト比",
+      sec_toggles: "切り替え",
+      swap_label: "左 Super／左 Alt 入れ替え",
+      swap_desc: "内蔵キーボードのみに適用されます。外付けキーボードは既定のままです。",
+      gaming_label: "ゲーミングモード",
+      gaming_desc: "VRR（可変リフレッシュレート）とティアリングを許可し、入力遅延を最小化します。オフで Omarchy の既定に戻ります。",
+      looks_label: "Opinionated Looks",
+      looks_desc: "角丸、半透明 5px の枠、柔らかな影、vibrancy ブラー。オフで Omarchy の既定に戻ります。",
+      pin_label: "ホットキーに固定",
+      pin_desc: "SUPER+CTRL+BACKSPACE が、既定の 1:1 の代わりに最後に設定した比率を切り替えます。いつでも元に戻せます。",
+      off: "オフ",
+      width: "幅", height: "高さ", apply: "適用",
+      active: "現在", custom: "カスタム", customChip: "カスタム…", offState: "オフ",
+      lang_tip: "言語",
+      upd_tip: "v%1 がリリースされました — クリックで更新",
+      upd_fail: "OmaSwiss の更新に失敗しました",
+      bar_tip_normal: "OmaSwiss · 左：ツール · 右：入れ替え",
+      bar_tip_swapped: "OmaSwiss · 入れ替え中 · 右：元に戻す",
+      qa_region_l: "範囲", qa_region_t: "スクリーンショット — 範囲を選択",
+      qa_window_l: "ウィンドウ", qa_window_t: "スクリーンショット — ウィンドウを選択",
+      qa_full_l: "全画面", qa_full_t: "スクリーンショット — 画面全体",
+      qa_pick_l: "スポイト", qa_pick_t: "カラーピッカー",
+      qa_ocr_l: "OCR", qa_ocr_t: "テキスト抽出（英語・中国語）",
+      qa_qr_l: "QR", qa_qr_t: "QR コードをスキャン — 解読したテキストをクリップボードへ",
+      qa_record_l: "録画", qa_record_t: "画面録画の開始／停止",
+      qa_webcam_l: "ウェブカメラ", qa_webcam_t: "ウェブカメラを含む画面録画の開始／停止"
+    },
+    ko: {
+      sec_actions: "빠른 동작",
+      sec_aspect: "창 비율",
+      sec_toggles: "전환",
+      swap_label: "왼쪽 Super/왼쪽 Alt 스왑",
+      swap_desc: "내장 키보드에만 적용됩니다. 외장 키보드는 기본 설정이 유지됩니다.",
+      gaming_label: "게임 모드",
+      gaming_desc: "VRR(가변 새로고침)과 테어링을 허용하여 입력 지연을 최소화합니다. 끄면 Omarchy 기본값으로 돌아갑니다.",
+      looks_label: "Opinionated Looks",
+      looks_desc: "둥근 모서리, 반투명 5px 테두리, 부드러운 그림자, vibrancy 블러. 끄면 Omarchy 기본값으로 돌아갑니다.",
+      pin_label: "단축키 고정",
+      pin_desc: "SUPER+CTRL+BACKSPACE 키가 기본 1:1 대신 마지막으로 설정한 비율을 전환합니다. 언제든지 되돌릴 수 있습니다.",
+      off: "끄기",
+      width: "너비", height: "높이", apply: "적용",
+      active: "현재", custom: "사용자 지정", customChip: "사용자 지정…", offState: "꺼짐",
+      lang_tip: "언어",
+      upd_tip: "v%1 릴리스됨 — 클릭하여 업데이트",
+      upd_fail: "OmaSwiss 업데이트 실패",
+      bar_tip_normal: "OmaSwiss · 왼쪽: 도구 · 오른쪽: 스왑",
+      bar_tip_swapped: "OmaSwiss · 스왑됨 · 오른쪽: 복원",
+      qa_region_l: "영역", qa_region_t: "스크린샷 — 영역 선택",
+      qa_window_l: "창", qa_window_t: "스크린샷 — 창 선택",
+      qa_full_l: "전체", qa_full_t: "스크린샷 — 전체 화면",
+      qa_pick_l: "색 선택", qa_pick_t: "화면 색 선택기",
+      qa_ocr_l: "OCR", qa_ocr_t: "텍스트 추출(영어·중국어)",
+      qa_qr_l: "QR", qa_qr_t: "QR 코드 스캔 — 디코딩된 텍스트를 클립보드에 복사",
+      qa_record_l: "녹화", qa_record_t: "화면 녹화 시작/중지",
+      qa_webcam_l: "웹캠", qa_webcam_t: "웹캠을 포함한 화면 녹화 시작/중지"
     }
   })
 
@@ -363,21 +429,27 @@ BarWidget {
     return strings.en[key]
   }
 
-  // Fail loudly if the two language blocks drift apart: a missing key is
+  // Fail loudly if the language blocks drift apart: a missing key is
   // invisible until that language is rendered, so catch it at load time.
+  // tr() falls back to en regardless, so the panel never shows a raw key —
+  // this only keeps the blocks honest.
   function checkStringParity() {
-    for (var k in strings.en)
-      if (strings.zh[k] === undefined) console.warn("oma-swiss: zh missing key", k)
-    for (var k2 in strings.zh)
-      if (strings.en[k2] === undefined) console.warn("oma-swiss: en missing key", k2)
+    for (var i = 0; i < langCodes.length; i++) {
+      var code = langCodes[i]
+      for (var k in strings.en)
+        if (strings[code][k] === undefined) console.warn("oma-swiss:", code, "missing key", k)
+      for (var k2 in strings[code])
+        if (strings.en[k2] === undefined) console.warn("oma-swiss: en missing key", k2)
+    }
   }
 
+  // IPC `lang` with no args cycles the four languages.
   function toggleLang() {
-    setLang(uiLang === "en" ? "zh" : "en")
+    setLang(langCodes[(langCodes.indexOf(uiLang) + 1) % langCodes.length])
   }
 
   function setLang(lang) {
-    if (lang !== "en" && lang !== "zh") return
+    if (langCodes.indexOf(lang) === -1) return
     console.log("oma-swiss: ui lang", lang)
     uiLang = lang
     langFile.setText(lang)
@@ -699,7 +771,7 @@ BarWidget {
   //   omarchy-shell glasschan.oma-swiss pin            pin/unpin the hotkey
   //   omarchy-shell glasschan.oma-swiss look           opinionated looks on/off
   //   omarchy-shell glasschan.oma-swiss gaming         gaming mode on/off
-  //   omarchy-shell glasschan.oma-swiss lang           toggle panel language EN/中
+  //   omarchy-shell glasschan.oma-swiss lang           cycle panel language en→zh→ja→ko
   //   omarchy-shell glasschan.oma-swiss panel          open/close popup
   IpcHandler {
     target: "glasschan.oma-swiss"
@@ -739,9 +811,9 @@ BarWidget {
     // the urgent color while the swap is on. (The old dimmed-at-rest look
     // came from the retired super-alt-swap plugin.)
     active: root.swapped
-    tooltipText: root.swapped
-      ? "OmaSwiss · Super⇄Alt swapped (right-click restore, left-click tools, middle-click region screenshot)"
-      : "OmaSwiss · left-click tools, right-click toggles Super⇄Alt, middle-click region screenshot"
+    // Localized, short by design — the bar is not a README. Middle-click is
+    // deliberately not documented here (discovering it is harmless).
+    tooltipText: root.swapped ? root.tr("bar_tip_swapped") : root.tr("bar_tip_normal")
     onPressed: function(b) {
       if (b === Qt.LeftButton) root.togglePanel()
       else if (b === Qt.RightButton) root.toggleSwap()
@@ -908,7 +980,7 @@ BarWidget {
     onFileChanged: reload()
     onLoaded: {
       var v = (text() || "").trim()
-      root.uiLang = v === "zh" ? "zh" : "en"
+      root.uiLang = langCodes.indexOf(v) !== -1 ? v : "en"
     }
     onLoadFailed: root.uiLang = "en"
   }
