@@ -60,8 +60,14 @@ Panel {
         spacing: Style.space(10)
         // Hard containment: nothing inside the panel may paint past the
         // card's background. With the notes slot flexing (below) the stack
-        // equals the card's inner height by construction; the clip is the
-        // last-resort guarantee on a pathologically small screen.
+        // equals the card's inner height by construction; in the degenerate
+        // path — fixed stack alone taller than the inner height on a small
+        // screen — the explicit clamp below keeps the column's rect at the
+        // inner height so the clip actually contains (a positioner's height
+        // defaults to its implicitHeight, i.e. as tall as the overflow,
+        // which would make clip: true alone inert). Loop-free: nothing in
+        // contentHeight's dependency chain reads column.height.
+        height: Math.min(implicitHeight, panel.contentHeight - panel.verticalContentInset)
         clip: true
 
         // Measured height of everything except the flexible notes slot, and
