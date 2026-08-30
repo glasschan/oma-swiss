@@ -21,6 +21,14 @@ Panel {
   readonly property var barIdentity: hostWidget || root
   readonly property var tool: hostWidget
 
+  // The release-notes slot is the column's flexible element (the flex rule
+  // itself is the host's flexNotesHeight): visible only while the upgrade
+  // badge shows and there are notes to show.
+  readonly property bool notesVisible: !!(root.tool && root.tool.updateAvailable
+    && root.tool.updateNotes !== undefined && root.tool.updateNotes !== "")
+  readonly property real notesDesiredHeight: root.notesVisible
+    ? Math.min(root.tool.panelNotesMaxHeight, notesText.implicitHeight) : 0
+
   // Narrow host contract: the view consumes ONLY the hostWidget members
   // named in this file (state, strings, actions) — nothing else is reachable
   // by contract. t() absorbs the null guard for the brief window where the
@@ -35,7 +43,10 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(330))
-    contentHeight: panel.fittedContentHeight(column.implicitHeight, Style.space(600))
+    // No artificial cap: fittedContentHeight clamps the card against
+    // availableCardHeight (the real space on the anchor edge), and the notes
+    // slot below flexes so the column always matches the fitted card.
+    contentHeight: panel.fittedContentHeight(column.requestedHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -47,6 +58,41 @@ Panel {
         id: column
         width: parent.width
         spacing: Style.space(10)
+        // Hard containment: nothing inside the panel may paint past the
+        // card's background. With the notes slot flexing (below) the stack
+        // equals the card's inner height by construction; the clip is the
+        // last-resort guarantee on a pathologically small screen.
+        clip: true
+
+        // Measured height of everything except the flexible notes slot, and
+        // how many visible children that stack has (the Column spends one
+        // spacing gap between each pair of visible children, notes included
+        // while its slot exists). Measured from the children themselves, so
+        // the grid's two rows, separators, and headers are counted exactly.
+        readonly property real fixedStackHeight: {
+          var total = 0
+          for (var i = 0; i < children.length; i++) {
+            var c = children[i]
+            if (c !== notesFlick && c.visible) total += c.height
+          }
+          return total
+        }
+        readonly property int fixedStackCount: {
+          var count = 0
+          for (var i = 0; i < children.length; i++) {
+            var c = children[i]
+            if (c !== notesFlick && c.visible) count++
+          }
+          return count
+        }
+
+        // What the column WANTS: the fixed stack plus the notes block at its
+        // desired height. Deliberately NOT implicitHeight while the notes
+        // slot is visible — implicitHeight would read the slot's fitted
+        // height and close a binding loop with panel.contentHeight.
+        readonly property real requestedHeight: root.notesVisible
+          ? fixedStackHeight + spacing * fixedStackCount + root.notesDesiredHeight
+          : implicitHeight
 
         // Section header with the language switch parked at the panel's
         // top-right corner — panel-level setting, macOS-menu-bar style. The
@@ -92,14 +138,20 @@ Panel {
         }
 
         // Release notes for the pending update, shown only while the upgrade
-        // badge is up. Plain text only (notes are untrusted content — never
-        // rich text), capped height, scrollable when the body runs longer.
+        // badge is up. This is the column's FLEXIBLE element: it fills
+        // whatever inner height the fitted card has left after the fixed
+        // stack and shrinks toward 0 when space is tight — the text scrolls.
+        // Plain text only (notes are untrusted content — never rich text).
         Flickable {
           id: notesFlick
-          visible: root.tool && root.tool.updateAvailable
-            && root.tool.updateNotes !== undefined && root.tool.updateNotes !== ""
+          visible: root.notesVisible
           width: parent.width
-          height: visible ? Math.min(Style.space(140), notesText.implicitHeight) : 0
+          height: root.notesVisible && root.tool
+            ? root.tool.flexNotesHeight(
+                panel.contentHeight - panel.verticalContentInset,
+                column.fixedStackHeight + column.spacing * column.fixedStackCount,
+                root.notesDesiredHeight)
+            : 0
           clip: true
           contentWidth: width
           contentHeight: notesText.implicitHeight
