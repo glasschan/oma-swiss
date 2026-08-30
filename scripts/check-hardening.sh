@@ -65,7 +65,7 @@ for path in files:
                 fails.append(f"{where}: dd read must be bounded (timeout + iflag=nonblock + bs/count caps)")
             if "io.open(" in line and not any("os.rename" in lines[k] for k in range(n - 1, min(n + 1, len(lines)))):
                 fails.append(f"{where}: Lua io.open write without os.rename on this or the next line — flag writes must be symlink-safe")
-            if path == "ToolPanel.qml" and re.search(r"\broot\.(toggleSwap|setAspect|clearAspect|aspectToggle|setPin|setLook|setGaming|toggleLang|setLang|runQuickAction|handleUpdateClick|flexNotesHeight)\(", line):
+            if path == "ToolPanel.qml" and re.search(r"\broot\.(toggleSwap|setAspect|clearAspect|aspectToggle|setPin|setLook|setGaming|toggleLang|setLang|runQuickAction|handleUpdateClick)\(", line):
                 fails.append(f"{where}: host function called on the panel's root — the panel is a pure view, host calls go through root.tool (TypeError regression of v0.3.2)")
         if re.search("[嘅揀]|唔係|成個|闊", line):
             fails.append(f"{where}: Cantonese marker in shipped Chinese (must be 書面語)")

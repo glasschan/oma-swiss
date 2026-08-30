@@ -726,18 +726,13 @@ BarWidget {
   // shell's KeyboardPanel.fittedContentHeight bounds the card by the real
   // anchor-edge geometry (availableCardHeight = screen minus the bar strip
   // and margins) — that is the ONLY ceiling, deliberately: a fixed
-  // aesthetic cap (the old Style.space(600)) clamps the card while the
-  // view's Column keeps its natural height, and everything past the card
-  // paints on the desktop (the 0.4 overflow). With the ceiling being real
-  // geometry, the release-notes block is the flexible element that gives
-  // way instead: flexNotesHeight gives it its desired height only while it
-  // fits and shrinks it toward 0 as space tightens (it is scrollable). The
-  // view measures its fixed stack and calls this with the card's inner
-  // height; the policy lives here so the panel stays a pure view.
-  readonly property real panelNotesMaxHeight: Style.space(140)
-  function flexNotesHeight(innerHeight, fixedStackHeight, desired) {
-    return Math.max(0, Math.min(desired, innerHeight - fixedStackHeight))
-  }
+  // aesthetic cap (the old Style.space(600), and later the notes-flex
+  // machinery that replaced it) clamps the card while the view's Column
+  // keeps its natural height, and everything past the card paints on the
+  // desktop (the 0.4.0 overflow). The view sizes the card to its column's
+  // implicit height and keeps a height clamp + clip on the column as
+  // degenerate-screen containment only. Binding-loop discipline: nothing
+  // in contentHeight's dependency chain may read column.height.
 
   function injectPanel() {
     var target = panelLoader.item
