@@ -89,9 +89,11 @@ legacy_cleanup() {
 # Remove the BEGIN..END marker block (plus one blank line directly before it)
 # from looknfeel.lua; everything else stays untouched. Same range semantics
 # as the standalone's strip_block_range, but landing through mktemp + mv -f
-# instead of sed -i so a planted symlink cannot redirect the edit.
+# instead of sed -i so a planted symlink cannot redirect the edit. A block at
+# line 1 skips the head slice entirely — GNU sed's `1,0p` PRINTS line 1, so
+# slicing unconditionally would leave permanent BEGIN-marker residue.
 strip_marker_block() {
-  _sb_total=$(wc -l <"$LOOKNFEEL_LUA")
+  _sb_total=$(grep -c '' "$LOOKNFEEL_LUA")
   _sb_begin=$(grep -nF -- "$BEGIN_MARKER" "$LOOKNFEEL_LUA" | head -n 1 | cut -d: -f 1)
   [ -n "$_sb_begin" ] || return 0
   _sb_end=$(grep -nF -- "$END_MARKER" "$LOOKNFEEL_LUA" | head -n 1 | cut -d: -f 1)
@@ -104,7 +106,8 @@ strip_marker_block() {
   _sb_dir=$(dirname -- "$LOOKNFEEL_LUA")
   _sb_tmp=$(mktemp -- "$_sb_dir/.oma-swiss-fcitx5.XXXXXX") || return 1
   {
-    sed -n "1,$((_sb_begin - 1))p" "$LOOKNFEEL_LUA"
+    [ "$_sb_begin" -gt 1 ] &&
+      sed -n "1,$((_sb_begin - 1))p" "$LOOKNFEEL_LUA"
     sed -n "$((_sb_end + 1)),\$p" "$LOOKNFEEL_LUA"
   } >"$_sb_tmp" &&
     mv -f -- "$_sb_tmp" "$LOOKNFEEL_LUA" ||
@@ -316,7 +319,7 @@ apply() {
   # 2. classicui.conf — fcitx5 conf/*.conf files are SECTION-LESS key=value:
   #    an [INI] header makes fcitx5 file every key under a section it never
   #    reads and silently fall back to defaults (hard-won fact #1).
-  atomic_write "$CLASSICUI_CONF" <<'EOF'
+  atomic_write "$CLASSICUI_CONF" <<'EOF' || return 1
 Theme=omarchy
 DarkTheme=omarchy
 UseDarkTheme=False
@@ -326,7 +329,7 @@ EOF
 
   # 3. theme-set hook: omarchy-theme-set runs it on every theme change, so
   #    the candidate window retints itself even when the bar is not loaded.
-  atomic_write "$HOOK_FILE" <<'EOF'
+  atomic_write "$HOOK_FILE" <<'EOF' || return 1
 #!/bin/sh
 # glasschan.oma-swiss: re-tint the fcitx5 candidate window on theme change.
 sh "$HOME/.config/omarchy/plugins/glasschan.oma-swiss/fcitx5-theme.sh" generate
@@ -359,13 +362,19 @@ unapply() {
   # 2. Hook out — no more retints.
   rm -f -- "$HOOK_FILE"
 
-  # 3. classicui.conf: only touch it when we own it (Theme=omarchy). Restore
-  #    the pre-install backup when there is one, else remove our file.
-  if [ -f "$CLASSICUI_CONF" ] && grep -q '^Theme=omarchy$' "$CLASSICUI_CONF" 2>/dev/null; then
-    if [ -f "$CLASSICUI_BACKUP" ]; then
-      mv -f -- "$CLASSICUI_BACKUP" "$CLASSICUI_CONF"
+  # 3. classicui.conf: only touch it when we own it — BOTH fingerprints must
+  #    match (Theme=omarchy AND our Font line; apply always writes both), so
+  #    a foreign file that merely carries Theme=omarchy is left alone.
+  if [ -f "$CLASSICUI_CONF" ]; then
+    if grep -q '^Theme=omarchy$' "$CLASSICUI_CONF" 2>/dev/null &&
+      grep -qF 'Font="OPPO Sans 4.0 11"' "$CLASSICUI_CONF" 2>/dev/null; then
+      if [ -f "$CLASSICUI_BACKUP" ]; then
+        mv -f -- "$CLASSICUI_BACKUP" "$CLASSICUI_CONF"
+      else
+        rm -f -- "$CLASSICUI_CONF"
+      fi
     else
-      rm -f -- "$CLASSICUI_CONF"
+      echo "fcitx5-theme: $CLASSICUI_CONF is not ours (fingerprint mismatch), leaving it untouched" >&2
     fi
   fi
 
