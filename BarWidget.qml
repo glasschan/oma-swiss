@@ -201,14 +201,17 @@ BarWidget {
   // hook), so the flip runs the repo-owned fcitx5-theme.sh through a
   // dedicated Process — NOT the eval queue (no single hyprctl eval can carry
   // several systems) and NOT launchDetached (the switch must stay
-  // interruptible by its reentrancy guard). Paths below mirror the script's
-  // own defaults, which stay authoritative: only fcitxScriptPath and the
-  // on/off arg cross into the Process, always as positional argv.
+  // interruptible by its reentrancy guard). The flag path below mirrors the
+  // script's own FLAG_FILE, which stays authoritative: only fcitxScriptPath
+  // and the on/off arg cross into the Process, always as positional argv.
   readonly property string fcitxFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua"
-  readonly property string fcitxHookPath: Quickshell.env("HOME") + "/.config/omarchy/hooks/theme-set.d/fcitx5"
-  readonly property string fcitxThemeDir: Quickshell.env("HOME") + "/.local/share/fcitx5/themes/omarchy"
-  readonly property string fcitxClassicuiPath: Quickshell.env("HOME") + "/.config/fcitx5/conf/classicui.conf"
-  readonly property string fcitxService: "omarchy-fcitx5.service"
+  // fcitx5-theme.sh is the single owner of the feature's remaining paths —
+  // the theme dir (~/.local/share/fcitx5/themes/omarchy), classicui.conf
+  // (~/.config/fcitx5/conf/classicui.conf), the theme-set hook
+  // (~/.config/omarchy/hooks/theme-set.d/fcitx5) and the service name
+  // (omarchy-fcitx5.service). They are deliberately NOT mirrored as QML
+  // properties: a second copy here would silently drift when the script
+  // moves one (silent-drift guard).
   readonly property string fcitxScriptPath: Qt.resolvedUrl("fcitx5-theme.sh").toString().replace("file://", "")
   property bool fcitxOn: false
 
@@ -1051,9 +1054,14 @@ BarWidget {
       waitForEnd: true
     }
     onExited: function(exitCode) {
-      if (exitCode !== 0)
+      if (exitCode !== 0) {
         console.warn("oma-swiss: fcitx5-theme.sh failed (" + exitCode + "):",
           (fcitxOut.text.trim() || fcitxErr.text.trim()))
+        // A failed run may have bailed before any flag write, so no watcher
+        // event will fire to correct the optimistic flip — re-read the flag
+        // now instead of trusting the watcher for failed runs.
+        fcitxFlagFile.reload()
+      }
     }
   }
 
