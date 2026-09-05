@@ -4,13 +4,14 @@ English · [繁體中文](README.zh-Hant.md)
 
 [![CI](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml/badge.svg)](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml)
 
-![OmaSwiss — one bar icon, five Hyprland tools](preview.png)
+![OmaSwiss — one bar icon, six Hyprland tools](preview.png)
 
-**One bar icon. Five Hyprland tools.**
+**One bar icon. Six Hyprland tools.**
 
 Swap your laptop's Super and Alt keys, lock the lone window to any aspect
-ratio, restyle your desktop, tune for gaming, and capture your screen — all
-from one popup that costs nothing while you're not using it.
+ratio, restyle your desktop, tune for gaming, theme your input method's
+candidate window, and capture your screen — all from one popup that costs
+nothing while you're not using it.
 
 ## Why you'll keep it installed
 
@@ -30,7 +31,7 @@ from one popup that costs nothing while you're not using it.
   once the update lands, so the new version is guaranteed on screen. The
   check runs at most once a day — never on a timer.
 
-## The five tools
+## The six tools
 
 - **Super ⇄ Alt swap** — trade the left Super and Alt keys on the built-in
   laptop keyboard, whenever you want. External keyboards are never touched.
@@ -44,6 +45,10 @@ from one popup that costs nothing while you're not using it.
 - **Gaming mode** — variable refresh (VRR) and tearing allowed in one
   toggle, for the lowest input latency. Switch it off and the stock values
   return, exactly.
+- **Fcitx5 candidate theme** — the fcitx5 input-method candidate window
+  picks up the Omarchy palette with rounded corners, a translucent rim, and
+  vibrancy blur, and retints itself on every theme change. Switch it off
+  and fcitx5 returns to its defaults.
 - **Quick capture** — region / window / fullscreen screenshots, a color
   picker, OCR (English + 中文), QR scan (decoded text lands in the
   clipboard), and screen recording start/stop with or without your webcam,
@@ -72,6 +77,7 @@ omarchy-shell glasschan.oma-swiss aspectToggle   # off <-> last ratio
 omarchy-shell glasschan.oma-swiss pin            # pin/unpin the ratio hotkey
 omarchy-shell glasschan.oma-swiss look           # looks on/off
 omarchy-shell glasschan.oma-swiss gaming         # gaming mode on/off
+omarchy-shell glasschan.oma-swiss fcitx          # fcitx5 candidate theme on/off
 omarchy-shell glasschan.oma-swiss lang           # cycle UI language en→zh→ja→ko→en
 omarchy-shell glasschan.oma-swiss panel          # open/close popup
 omarchy-shell glasschan.oma-swiss open           # open the panel
@@ -88,7 +94,11 @@ omarchy plugin remove glasschan.oma-swiss   # remove
 
 Before removing, switch every toggle off in the panel. Each toggle leaves a
 small state file that re-applies your setting at login — switching it off
-deletes the file, so nothing outlives the plugin.
+deletes the file, so nothing outlives the plugin. Switch the **Fcitx5
+candidate theme** off before removing in particular: while on, it installs a
+theme-retint hook that points into the plugin directory, and removing the
+plugin with the toggle still on would leave that hook calling a missing
+script.
 
 ## Dependencies
 
@@ -99,5 +109,12 @@ None to install — everything ships with Omarchy v4: Hyprland 0.56+,
 `hyprpicker`.
 `jq` (present on a stock Omarchy install) is used, when available, to show
 release notes for pending updates — the update check works without it.
+
+The **Fcitx5 candidate theme** toggle is optional and degrades gracefully:
+it needs a stock fcitx5 install with `omarchy-fcitx5.service` active (a
+stopped service is never force-started) and the stock
+`omarchy-theme-color`. With ImageMagick's `magick` present it renders the
+rounded 9-patch background; without it, a square bordered fallback is
+generated instead.
 
 MIT.

@@ -1,8 +1,8 @@
 # Implementation Brief: Fcitx5 Candidate-Window Theming → OmaSwiss
 
-**Status:** working standalone implementation, to be absorbed into OmaSwiss as a toggle.
-**Source of truth today:** `~/omarchy-custom-scripts/setup-fcitx5-theme.sh` (approved by user 2026-09-06, "呢個版非常好").
-**Purpose of this doc:** everything another agent needs to move this feature into OmaSwiss without re-deriving the hard-won facts. Read this fully before writing code.
+**Status:** ABSORBED into OmaSwiss as the "Fcitx5 candidate theme" toggle (repo-root `fcitx5-theme.sh` + BarWidget/ToolPanel, v0.5.0). §4 below records the two settled amendments the implementation made to the original proposal; §1–§3 stay as the historical record of the standalone source and its hard-won facts.
+**Source of truth today:** the OmaSwiss implementation on this branch (`fcitx5-theme.sh`, `BarWidget.qml`). The standalone `~/omarchy-custom-scripts/setup-fcitx5-theme.sh` is deprecated — it now prints a pointer and exits 1.
+**Purpose of this doc:** everything another agent needs to understand the absorbed feature without re-deriving the hard-won facts. Read this fully before writing code.
 
 ---
 
@@ -105,29 +105,24 @@ hl.layer_rule({ match = { namespace = "fcitx" }, blur = true })
 
 Note: only `hyprland.lua`'s five `require()` modules are live in Omarchy v4 — sibling `*.conf` files are legacy and never loaded.
 
-## 4. Suggested OmaSwiss integration design
+## 4. Settled integration design (as implemented, with two amendments)
 
-Follow the existing toggle contract ("one flag file owns the feature; absent = stock exactly"). Differences from the Hyprland toggles: fcitx5 theming spans **three systems** (fcitx5 files, an Omarchy hook, one Hyprland layer rule), so the flag file alone can't carry it — the toggle drives an apply/unapply routine.
+Follow the existing toggle contract ("one flag file owns the feature; absent = stock exactly"). Differences from the Hyprland toggles: fcitx5 theming spans **three systems** (fcitx5 files, an Omarchy hook, one Hyprland layer rule), so the flag file alone can't carry the artifacts — but it DOES carry both the Hyprland piece and the plugin state. Two amendments were made to the original proposal below, both settled before implementation:
 
-### Proposed contract
+- **AMENDMENT 1 — the blur flag replaces the looknfeel.lua marker block.** The flag `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` holds exactly one line, `hl.layer_rule({ match = { namespace = "fcitx" }, blur = true })`. Omarchy require_all's every lua in `toggles/hypr/`, and `hl.layer_rule` is available there (verified), so the file's content IS the live Hyprland artifact while its existence doubles as the plugin's state (FileView watch + `status`). No marker block in `looknfeel.lua` is ever written by OmaSwiss; the plugin only ever STRIPS the standalone installer's legacy marker block (on every apply and unapply).
+- **AMENDMENT 2 — the separate `toggles/fcitx5-candidate-theme/ON` state marker is dropped.** One boolean, one file: flag exists ⇔ feature on. The `toggles/hypr/` directory is require_all'd as lua, which is exactly why the single file can carry both roles — a non-lua state file there was the only reason the original proposal wanted a second location.
 
-- **State file:** `~/.local/state/omarchy/toggles/fcitx5-candidate-theme/ON` (new toggles subdir; the existing `toggles/hypr/` dir is Hyprland-lua-specific and is `require_all`-ed as lua, so don't put non-lua state there).
-- **ON** = install: theme dir (regenerate for current palette), `classicui.conf`, `theme-set.d/fcitx5` hook, looknfeel.lua marker block (or an equivalent toggles-hypr lua if you prefer keeping the layer rule in the toggle system), restart service.
-- **OFF** = unapply everything: remove theme dir, remove `classicui.conf`, remove hook, strip marker block, restart service + `hyprctl reload`. User ends up exactly on fcitx5/Hyprland stock.
-- **QML:** new toggle row in `ToolPanel.qml` + handler in `BarWidget.qml`, same shape as the looks toggle (`lookFlagPath`/`lookOn`/`lookLua` pattern). Reuse `Quickshell.process`/`DesktopEntries` invocation style already in the codebase for running the generator.
+### Implemented contract
 
-### The retint question (design decision to make)
+- **Flag:** `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` (see the two amendments above). Apply writes it LAST; unapply removes it FIRST.
+- **ON** = `fcitx5-theme.sh apply`: back up the user's own `classicui.conf` once (`classicui.conf.pre-oma-swiss`, cp -p, never overwritten), install the section-less `classicui.conf`, install the `theme-set.d/fcitx5` hook, legacy cleanup, write the flag + `hyprctl reload`, generate for the current palette, restart the service (guarded — a stopped `omarchy-fcitx5.service` is never force-started). Idempotent throughout.
+- **OFF** = `fcitx5-theme.sh unapply`: remove flag + reload, remove hook, restore or remove `classicui.conf` (only when it contains `Theme=omarchy` — never touch a file we don't own), `rm -rf` the theme dir, legacy cleanup, guarded service restart.
+- **Retint decision (a) stands** — the Omarchy hook is kept, but its one line now invokes the plugin's own co-located script: `sh "$HOME/.config/omarchy/plugins/glasschan.oma-swiss/fcitx5-theme.sh" generate`. The generator no longer lives in `~/.local/bin`.
+- **QML:** `setFcitx(on)` in `BarWidget.qml` follows the looks/pin family (optimistic flip + dedicated `fcitxProc` with a `running` reentrancy guard + flag-watcher correction) — NOT flagEval/EvalQueue (no single hyprctl eval can carry three systems) and NOT launchDetached (the toggle must stay guard-interruptible). The Process runs `["timeout", "90", "sh", fcitxScriptPath, "apply"|"unapply"]` — positional argv only, nothing QML-concatenated. The row sits between Opinionated Looks and pin in the toggle group.
 
-The feature must re-run the generator on every `omarchy-theme-set`. Two viable mechanisms:
+### Deprecation (done)
 
-- **(a) Keep the Omarchy hook** (`~/.config/omarchy/hooks/theme-set.d/fcitx5` → generator). Proven, works even if the panel isn't loaded, zero runtime cost for the plugin. Con: it's a file outside OmaSwiss's own state dir; install/uninstall must manage it cleanly and it must coexist with the `omazed` block in `hooks/theme-set.d/` (separate file, no conflict).
-- **(b) Watch the palette in QML** (`Quickshell.FileView` with `watchChanges` on `~/.local/state/omarchy/current/theme/colors.toml`, then run the generator via Process). Keeps 100% of the feature inside OmaSwiss, no hook files. Con: only works while the plugin is loaded (it always is — the bar icon never sleeps), and duplicates what the Omarchy hook system already does.
-
-Recommendation: **(a)** — the hook is the Omarchy-native extension point (that's literally what `theme-set.d/` is for), survives relogins and headless theme switches, and OmaSwiss merely owns installing/uninstalling it. The generator itself must stay a standalone executable (it is today) so the hook is one line.
-
-### Deprecation
-
-Once OmaSwiss owns the feature, remove/retire `setup-fcitx5-theme.sh`'s installed artifacts (`-u`) to avoid two owners of the same files, and delete the script from `omarchy-custom-scripts` (or leave a pointer). Both implementations writing the same hook/theme is the main hazard of this migration.
+`~/omarchy-custom-scripts/setup-fcitx5-theme.sh` now only prints a pointer (use the OmaSwiss toggle; remove the integration with `sh ~/.config/omarchy/plugins/glasschan.oma-swiss/fcitx5-theme.sh unapply`) and exits 1; that repo's README/CLAUDE.md/test-idempotency.sh mark it deprecated/skipped. The `unapply` above and the script's legacy cleanup are the two-owners escape hatch.
 
 ## 5. Verification checklist
 
