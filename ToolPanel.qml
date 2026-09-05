@@ -413,9 +413,9 @@ Panel {
 
         PanelSectionHeader { text: root.t("sec_toggles") }
 
-        // The four toggles as one 切換 group of single-line rows — the
+        // The five toggles as one 切換 group of single-line rows — the
         // former one-card-per-toggle layout cost ~120px each. Row order:
-        // gaming, swap, looks, pin. Descriptions live on row hover.
+        // gaming, swap, looks, fcitx5, pin. Descriptions live on row hover.
         BorderSurface {
           width: parent.width
           height: toggleRows.height
@@ -459,6 +459,17 @@ Panel {
               tip: root.t("looks_desc")
               checked: root.tool && root.tool.lookOn
               onToggled: if (root.tool) root.tool.setLook(!root.tool.lookOn)
+            }
+
+            GroupDivider {}
+
+            ToggleRow {
+              iconGlyph: "\uEF78" // tabler language-katakana
+              iconFamily: root.tool ? root.tool.iconFont : ""
+              label: root.t("fcitx5_label")
+              tip: root.t("fcitx5_desc")
+              checked: root.tool && root.tool.fcitxOn
+              onToggled: if (root.tool) root.tool.setFcitx(!root.tool.fcitxOn)
             }
 
             GroupDivider {}

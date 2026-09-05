@@ -33,7 +33,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           mkdir -p dist/oma-swiss
-          cp manifest.json BarWidget.qml ToolPanel.qml EvalQueue.qml tabler-icons.ttf \
+          cp manifest.json BarWidget.qml ToolPanel.qml EvalQueue.qml fcitx5-theme.sh tabler-icons.ttf \
              preview.png README.md README.zh-Hant.md AGENTS.md LICENSE dist/oma-swiss/
           cd dist && zip -r "oma-swiss-v${TAG}.zip" oma-swiss && cd ..
           sha256sum dist/*.zip > dist/sha256.txt
