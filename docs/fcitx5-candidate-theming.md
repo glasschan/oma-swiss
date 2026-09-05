@@ -124,23 +124,25 @@ Follow the existing toggle contract ("one flag file owns the feature; absent = s
 
 `~/omarchy-custom-scripts/setup-fcitx5-theme.sh` now only prints a pointer (use the OmaSwiss toggle; remove the integration with `sh ~/.config/omarchy/plugins/glasschan.oma-swiss/fcitx5-theme.sh unapply`) and exits 1; that repo's README/CLAUDE.md/test-idempotency.sh mark it deprecated/skipped. The `unapply` above and the script's legacy cleanup are the two-owners escape hatch.
 
-## 5. Verification checklist
+## 5. Verification checklist (implemented contract)
 
-1. Toggle ON → all four artifacts exist (`theme.conf`, `classicui.conf`, hook, marker block); `systemctl --user is-active omarchy-fcitx5.service` → active.
+1. Toggle ON → the flag file exists (`~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua`, exactly one line: `hl.layer_rule({ match = { namespace = "fcitx" }, blur = true })` — the flag IS the Hyprland artifact per Amendment 1; no marker block is ever written) and the artifacts exist (`~/.local/share/fcitx5/themes/omarchy/theme.conf`, section-less `classicui.conf` with `Theme=omarchy`, the `theme-set.d/fcitx5` hook); `systemctl --user is-active omarchy-fcitx5.service` → active.
 2. Type (real keystrokes only — see fact #5): popup shows current palette, rounded corners, translucent rim, blur, rounded highlight; highlight stays inside the rim.
 3. `omarchy-theme-set <another-theme>` → popup retints automatically (PNGs re-rendered). Verified across tokyo-night → ristretto → miasma during development.
 4. `stat -c '%x' ~/.local/share/fcitx5/themes/omarchy/theme.conf` — fresh atime after a popup proves classicui loaded it (fact #4).
-5. Toggle OFF → all artifacts gone; popup back to fcitx5 default; no orphan hook entries; `looknfeel.lua` has no leftover marker lines.
-6. Idempotency: apply twice → byte-identical artifacts (the standalone repo's `test-idempotency.sh setup-fcitx5-theme.sh` pattern).
+5. Toggle OFF → the flag and all artifacts gone (classicui.conf restored/removed only when BOTH of the script's fingerprints match — `Theme=omarchy` AND `Font="OPPO Sans 4.0 11"`; a foreign file is left untouched with a warning); popup back to fcitx5 default; no orphan hook entries; `looknfeel.lua` keeps no leftover legacy marker lines (the standalone block is stripped on every apply AND unapply).
+6. Idempotency: run `fcitx5-theme.sh apply` twice → byte-identical artifacts, existing backup never clobbered.
 
 ## 6. File map
 
 | Path | Role |
 |---|---|
-| `~/omarchy-custom-scripts/setup-fcitx5-theme.sh` | current source of truth (generator embedded); read first |
+| OmaSwiss repo: `fcitx5-theme.sh` (repo root) | **canonical generator + apply/unapply — source of truth; read first** |
+| `~/omarchy-custom-scripts/setup-fcitx5-theme.sh` | deprecated pointer stub only — prints a pointer to the OmaSwiss toggle and exits 1 |
 | `~/.local/share/fcitx5/themes/omarchy/` | generated theme (`theme.conf`, `background.png`, `highlight.png`, stock arrow/next/prev/radio.png) |
 | `~/.config/fcitx5/conf/classicui.conf` | section-less addon config |
-| `~/.config/omarchy/hooks/theme-set.d/fcitx5` | retint hook |
-| `~/.config/hypr/looknfeel.lua` | marker block with `hl.layer_rule` blur |
+| `~/.config/omarchy/hooks/theme-set.d/fcitx5` | retint hook (one line invoking the repo script's `generate`) |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` | the flag: one-line `hl.layer_rule` blur; existence = feature state (Amendment 1) |
+| `~/.config/hypr/looknfeel.lua` | never written by OmaSwiss — only the standalone installer's legacy marker block is stripped from it (every apply and unapply) |
 | `~/.local/state/omarchy/current/theme/colors.toml` | palette single source (read via `omarchy-theme-color`) |
-| OmaSwiss: `BarWidget.qml` (looks toggle pattern), `ToolPanel.qml` (toggle rows) | integration points |
+| OmaSwiss: `BarWidget.qml` (toggle Process + flag watch), `ToolPanel.qml` (toggle row) | integration points |
