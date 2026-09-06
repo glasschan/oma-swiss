@@ -10,8 +10,8 @@ import qs.Ui
 // too. Every user-facing string resolves through tool.tr(), which makes the
 // top-right language menu re-render the whole panel. Three sections in one
 // column — quick capture actions (the panel closes on fire so selection
-// overlays get a clear screen), window aspect (presets plus a custom row
-// that only exists while wanted), and the toggle group as single-line rows
+// overlays get a clear screen), window aspect (presets above an always-
+// visible custom W/H row), and the toggle group as single-line rows
 // whose descriptions moved into hover tooltips. Release notes for a pending
 // update render in a hover tooltip on the header's upgrade badge.
 
@@ -83,9 +83,31 @@ Panel {
 
     // The row's own hover tool — PanelActionButton's pattern. Descriptions
     // must stay discoverable somewhere now that the cards are single-line.
+    // Width mirrors the header update-badge tooltip: capped at panel scale
+    // so a description never spans the screen, and the contentItem is
+    // overridden to wrap (WrapAtWordBoundaryOrAnywhere so CJK breaks
+    // cleanly); descriptions are 1–2 sentences, so no elide or line cap.
+    // Still a ToolTip — it renders in the Qt overlay layer, escaping the
+    // column's clip.
     PanelToolTip {
+      id: rowTip
       visible: rowMouse.containsMouse && toggleRow.tip !== ""
+      width: Math.min(implicitWidth, Style.space(300))
       text: toggleRow.tip
+
+      contentItem: Text {
+        text: rowTip.text
+        color: rowTip.panelForeground
+        font.family: rowTip.fontFamily
+        font.pixelSize: rowTip.fontSize
+        textFormat: Text.PlainText
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        width: rowTip.availableWidth
+        leftPadding: Border.left(rowTip.panelBorderSpec) + Style.spacing.controlPaddingX
+        rightPadding: Border.right(rowTip.panelBorderSpec) + Style.spacing.controlPaddingX
+        topPadding: Border.top(rowTip.panelBorderSpec) + Style.spacing.controlPaddingY
+        bottomPadding: Border.bottom(rowTip.panelBorderSpec) + Style.spacing.controlPaddingY
+      }
     }
 
     MouseArea {
@@ -114,26 +136,18 @@ Panel {
   readonly property bool notesVisible: !!(root.tool && root.tool.updateAvailable
     && root.tool.updateNotes !== undefined && root.tool.updateNotes !== "")
 
-  // View-transient UI state, not app state: whether the custom W/H/Apply row
-  // exists, and what its W/H fields hold. Both are re-derived on EVERY panel
-  // open — the loader never deactivates, so one-shot initial work would stay
-  // broken after the first click (the old Component.onCompleted prefill ran
-  // before hostWidget was injected and left the fields on spinbox defaults
-  // forever). Within a session an explicit chip/preset click overrides
-  // until the next open.
-  property bool customRevealed: false
+  // The custom W/H fields' values are re-derived on EVERY panel open — the
+  // loader never deactivates, so one-shot initial work would stay broken
+  // after the first click (the old Component.onCompleted prefill ran before
+  // hostWidget was injected and left the fields on spinbox defaults
+  // forever). This is the panel's ONLY on-open derivation: the custom row
+  // itself is a plain always-visible child of the aspect section, so the
+  // panel now carries no view-transient state at all.
+  onOpenedChanged: if (opened) prefillCustomFields()
 
-  onOpenedChanged: if (opened) { rederiveCustomReveal(); prefillCustomFields() }
-
-  function rederiveCustomReveal() {
-    var t = root.tool
-    root.customRevealed = !!t && t.lastW > 0 && t.lastH > 0
-      && !t.aspectIsPreset(t.lastW, t.lastH)
-  }
-
-  // Field prefill rides the same on-open derivation — no host reads at
-  // creation time (hostWidget arrives after the component completes).
-  // Priority per the panel contract: live custom ratio → last-aspect → 21:9.
+  // Field prefill — no host reads at creation time (hostWidget arrives after
+  // the component completes). Priority per the panel contract: live custom
+  // ratio → last-aspect → 21:9.
   function prefillCustomFields() {
     var t = root.tool
     if (!t) return
@@ -197,18 +211,52 @@ Panel {
         height: Math.min(implicitHeight, panel.contentHeight - panel.verticalContentInset)
         clip: true
 
-        // Section header with the language switch parked at the panel's
-        // top-right corner — panel-level setting. The button shows the
-        // active language and opens the language menu.
+        // Panel header: the brand title (literal "OmaSwiss" — a brand name,
+        // never translated, no strings key, same convention as the bar
+        // tooltip's line 1), the muted version label beside it, and the
+        // upgrade badge + language switch parked at the panel's top-right
+        // corner — panel-level setting. The button shows the active language
+        // and opens the language menu.
         Item {
           width: parent.width
-          height: Math.max(actionsHeader.implicitHeight, langButton.size)
+          height: Math.max(brandHeader.implicitHeight, langButton.size)
 
-          PanelSectionHeader {
-            id: actionsHeader
+          // The brand title follows the shell's panel-title idiom — the size
+          // and weight PanelHero renders page titles at (Style.font.title,
+          // bold) in plain foreground, not a section label's muted darker
+          // tone. topPadding keeps the Nerd Font ascender overshoot clear of
+          // the column's clip, the same reserve PanelSectionHeader applies
+          // to headers sitting at the top of clipped lists.
+          Text {
+            id: brandHeader
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: root.t("sec_actions")
+            text: "OmaSwiss"
+            textFormat: Text.PlainText
+            color: Color.foreground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.title
+            font.bold: true
+            topPadding: Math.ceil(Style.font.title * 0.15)
+          }
+
+          // Installed version, read through the host's already-parsed
+          // manifest (pure-view rule: root.tool, never root). Muted and
+          // non-bold so it reads as a footnote beside the brand title;
+          // hidden entirely when the manifest never parsed ("" on the
+          // host). Baseline-aligned to the title, clear of the
+          // right-anchored badge and language button — their layout is
+          // untouched.
+          Text {
+            anchors.left: brandHeader.right
+            anchors.leftMargin: Style.spacing.controlGap
+            anchors.baseline: brandHeader.baseline
+            text: root.tool && root.tool.pluginVersion ? "v" + root.tool.pluginVersion : ""
+            visible: text !== ""
+            color: Qt.darker(root.barForeground, 1.4)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            textFormat: Text.PlainText
           }
 
           // Upgrade badge: appears left of the language switch only when a
@@ -276,6 +324,11 @@ Panel {
           }
         }
 
+        // Quick-actions section label — the old header title demoted to the
+        // same PanelSectionHeader treatment as 視窗比例 and 切換 below; the
+        // string key is unchanged in all four languages.
+        PanelSectionHeader { text: root.t("sec_actions") }
+
         // Eight cells in two rows of four: icon button over a caption label.
         // Stateless launchers — the tool owns the command list, this only
         // renders it.
@@ -327,10 +380,7 @@ Panel {
           Button {
             text: root.t("off")
             selected: root.tool && !root.tool.aspectOn
-            onClicked: {
-              root.customRevealed = false
-              if (root.tool) root.tool.clearAspect()
-            }
+            onClicked: if (root.tool) root.tool.clearAspect()
           }
 
           Repeater {
@@ -342,29 +392,18 @@ Panel {
               selected: root.tool
                 && root.tool.aspectW === modelData.w
                 && root.tool.aspectH === modelData.h
-              onClicked: {
-                root.customRevealed = false
-                if (root.tool) root.tool.setAspect(modelData.w, modelData.h)
-              }
+              onClicked: if (root.tool) root.tool.setAspect(modelData.w, modelData.h)
             }
-          }
-
-          // Reveals the custom W/H/Apply row; clicking again collapses it
-          // (also collapses an auto-revealed row). Selecting a ratio is NOT
-          // what the chip does — nothing lands until 套用.
-          Button {
-            text: root.t("customChip")
-            selected: root.customRevealed
-            onClicked: root.customRevealed = !root.customRevealed
           }
         }
 
         // Three equal columns on one line — W field, H field, Apply — each
         // filling a third of the row. The Apply cell bottom-aligns with the
-        // spinboxes (it has no label above it). Exists only while revealed.
+        // spinboxes (it has no label above it). Always visible, directly
+        // below the preset chips (the former 自訂… reveal chip and its
+        // collapse machinery are gone).
         Row {
             id: customRow
-            visible: root.customRevealed
             width: parent.width
             spacing: Style.spacing.controlGap
             readonly property real cellW: (width - 2 * spacing) / 3
@@ -413,9 +452,9 @@ Panel {
 
         PanelSectionHeader { text: root.t("sec_toggles") }
 
-        // The four toggles as one 切換 group of single-line rows — the
+        // The five toggles as one 切換 group of single-line rows — the
         // former one-card-per-toggle layout cost ~120px each. Row order:
-        // gaming, swap, looks, pin. Descriptions live on row hover.
+        // gaming, swap, looks, fcitx5, pin. Descriptions live on row hover.
         BorderSurface {
           width: parent.width
           height: toggleRows.height
@@ -459,6 +498,17 @@ Panel {
               tip: root.t("looks_desc")
               checked: root.tool && root.tool.lookOn
               onToggled: if (root.tool) root.tool.setLook(!root.tool.lookOn)
+            }
+
+            GroupDivider {}
+
+            ToggleRow {
+              iconGlyph: "\uEF78" // tabler language-katakana
+              iconFamily: root.tool ? root.tool.iconFont : ""
+              label: root.t("fcitx5_label")
+              tip: root.t("fcitx5_desc")
+              checked: root.tool && root.tool.fcitxOn
+              onToggled: if (root.tool) root.tool.setFcitx(!root.tool.fcitxOn)
             }
 
             GroupDivider {}

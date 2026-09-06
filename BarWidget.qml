@@ -7,10 +7,10 @@ import qs.Ui
 
 // OmaSwiss: the state engine and bar icon. Every piece of state and every
 // action lives here; ToolPanel.qml is a pure view injected with this widget as
-// hostWidget. The toggles (swap, aspect, opinionated looks, gaming mode) are
-// flag-file driven so they survive reloads and logins without the widget
-// running, and everything is event driven — no timers, no polling. Quick
-// actions are stateless one-shot launchers.
+// hostWidget. The toggles (swap, aspect, opinionated looks, gaming mode,
+// fcitx5 candidate theming) are flag-file driven so they survive reloads and
+// logins without the widget running, and everything is event driven — no
+// timers, no polling. Quick actions are stateless one-shot launchers.
 BarWidget {
   id: root
   moduleName: "glasschan.oma-swiss"
@@ -189,15 +189,41 @@ BarWidget {
     ""
   ].join("\n")
 
+  // ---- Tool 5: fcitx5 candidate theming -------------------------------------
+
+  // One flag file owns fcitx5 candidate theming — and it is BOTH artifacts in
+  // one: Omarchy require_all's every lua in toggles/hypr, so the file's one
+  // line IS the live Hyprland layer rule (vibrancy blur on the "fcitx" layer
+  // surface — the only layer-rule field that works; rounding/shadow do not
+  // exist there), and its existence is the plugin's state. Exists = themed +
+  // blurred; absent = fcitx5/Hyprland stock exactly. The feature spans more
+  // artifacts than the flag (theme dir, classicui.conf, an omarchy theme-set
+  // hook), so the flip runs the repo-owned fcitx5-theme.sh through a
+  // dedicated Process — NOT the eval queue (no single hyprctl eval can carry
+  // several systems) and NOT launchDetached (the switch must stay
+  // interruptible by its reentrancy guard). The flag path below mirrors the
+  // script's own FLAG_FILE, which stays authoritative: only fcitxScriptPath
+  // and the on/off arg cross into the Process, always as positional argv.
+  readonly property string fcitxFlagPath: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua"
+  // fcitx5-theme.sh is the single owner of the feature's remaining paths —
+  // the theme dir (~/.local/share/fcitx5/themes/omarchy), classicui.conf
+  // (~/.config/fcitx5/conf/classicui.conf), the theme-set hook
+  // (~/.config/omarchy/hooks/theme-set.d/fcitx5) and the service name
+  // (omarchy-fcitx5.service). They are deliberately NOT mirrored as QML
+  // properties: a second copy here would silently drift when the script
+  // moves one (silent-drift guard).
+  readonly property string fcitxScriptPath: Qt.resolvedUrl("fcitx5-theme.sh").toString().replace("file://", "")
+  property bool fcitxOn: false
+
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 14 codepoints
-  // this plugin uses (6 KB). Rebuild it from the upstream webfont (fetch
+  // so the bundled tabler-icons.ttf is a subset holding only the 15 codepoints
+  // this plugin uses (8 KB). Rebuild it from the upstream webfont (fetch
   // dist/fonts/tabler-icons.ttf from @tabler/icons-webfont, e.g. on
   // jsdelivr) when an icon changes:
   //   python -m fontTools.subset tabler-icons-full.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C,U+EF78 \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through
@@ -313,11 +339,13 @@ BarWidget {
       gaming_desc: "VRR (variable refresh) and tearing allowed for the lowest input latency. Off restores Omarchy defaults.",
       looks_label: "Opinionated Looks",
       looks_desc: "Rounded corners, a translucent 5px border, soft shadow, vibrancy blur. Off = Omarchy defaults.",
+      fcitx5_label: "Fcitx5 candidate theme",
+      fcitx5_desc: "Themes the fcitx5 candidate window with the Omarchy palette — rounded corners, soft blur. Retints on every theme change. Off = fcitx5 defaults.",
       pin_label: "Pin ratio hotkey",
       pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
       off: "Off",
       width: "Width", height: "Height", apply: "Apply",
-      active: "Active", custom: "custom", customChip: "Custom…", offState: "off",
+      active: "Active", custom: "custom", offState: "off",
       lang_tip: "Language",
       upd_tip: "v%1 is out — click to update",
       upd_fail: "OmaSwiss update failed",
@@ -342,11 +370,13 @@ BarWidget {
       gaming_desc: "啟用 VRR（可變更新率）並允許畫面撕裂，降低輸入延遲；關閉即還原 Omarchy 預設。",
       looks_label: "Opinionated Looks",
       looks_desc: "圓角、5px 半透明邊框、柔和陰影、毛玻璃。關閉即還原 Omarchy 預設。",
+      fcitx5_label: "輸入法候選視窗主題",
+      fcitx5_desc: "以 Omarchy 配色為 fcitx5 候選視窗套用圓角邊框與毛玻璃效果，切換主題時自動重新配色；關閉即還原 fcitx5 預設。",
       pin_label: "固定比例快捷鍵",
       pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
       off: "關",
       width: "寬", height: "高", apply: "套用",
-      active: "目前", custom: "自訂", customChip: "自訂…", offState: "關閉",
+      active: "目前", custom: "自訂", offState: "關閉",
       lang_tip: "介面語言",
       upd_tip: "新版本 v%1 可用，點擊更新",
       upd_fail: "OmaSwiss 更新失敗",
@@ -371,11 +401,13 @@ BarWidget {
       gaming_desc: "VRR（可変リフレッシュレート）とティアリングを許可し、入力遅延を最小化します。オフで Omarchy の既定に戻ります。",
       looks_label: "Opinionated Looks",
       looks_desc: "角丸、半透明 5px の枠、柔らかな影、vibrancy ブラー。オフで Omarchy の既定に戻ります。",
+      fcitx5_label: "Fcitx5 候補ウィンドウ",
+      fcitx5_desc: "fcitx5 の候補ウィンドウを Omarchy のパレットに合わせた角丸・半透明の枠・vibrancy ブラーで装飾し、テーマ変更時に自動で再配色します。オフで fcitx5 の既定に戻ります。",
       pin_label: "比率ホットキーを固定",
       pin_desc: "SUPER+CTRL+BACKSPACE が、既定の 1:1 の代わりに最後に設定した比率を切り替えます。いつでも元に戻せます。",
       off: "オフ",
       width: "幅", height: "高さ", apply: "適用",
-      active: "現在", custom: "カスタム", customChip: "カスタム…", offState: "オフ",
+      active: "現在", custom: "カスタム", offState: "オフ",
       lang_tip: "言語",
       upd_tip: "v%1 がリリースされました — クリックで更新",
       upd_fail: "OmaSwiss の更新に失敗しました",
@@ -400,11 +432,13 @@ BarWidget {
       gaming_desc: "VRR(가변 새로고침)과 테어링을 허용하여 입력 지연을 최소화합니다. 끄면 Omarchy 기본값으로 돌아갑니다.",
       looks_label: "Opinionated Looks",
       looks_desc: "둥근 모서리, 반투명 5px 테두리, 부드러운 그림자, vibrancy 블러. 끄면 Omarchy 기본값으로 돌아갑니다.",
+      fcitx5_label: "입력 후보 창 테마",
+      fcitx5_desc: "fcitx5 후보 창을 Omarchy 팔레트에 맞춘 둥근 모서리, 반투명 테두리, vibrancy 블러로 꾸미며 테마 변경 시 자동으로 다시 색을 입힙니다. 끄면 fcitx5 기본값으로 돌아갑니다.",
       pin_label: "비율 단축키 고정",
       pin_desc: "SUPER+CTRL+BACKSPACE 키가 기본 1:1 대신 마지막으로 설정한 비율을 전환합니다. 언제든지 되돌릴 수 있습니다.",
       off: "끄기",
       width: "너비", height: "높이", apply: "적용",
-      active: "현재", custom: "사용자 지정", customChip: "사용자 지정…", offState: "꺼짐",
+      active: "현재", custom: "사용자 지정", offState: "꺼짐",
       lang_tip: "언어",
       upd_tip: "v%1 버전이 출시되었습니다 — 클릭하여 업데이트",
       upd_fail: "OmaSwiss 업데이트 실패",
@@ -473,6 +507,11 @@ BarWidget {
   // worth caching.
   readonly property string manifestPath: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
   property string localVersion: ""
+  // Display-only view of the installed version (panel header label, the
+  // `status` tail) — the same parsed manifest value the badge compares
+  // against, never a second read or parse. "" until the manifest loads,
+  // and stays "" if it never parses.
+  readonly property string pluginVersion: localVersion
   property string latestVersion: ""
   property string updateNotes: ""
   property real updateCheckedAt: 0
@@ -645,6 +684,25 @@ BarWidget {
     evalQueue.enqueue(evalGaming(on))
   }
 
+  // Fcitx5 theming spans fcitx5 files, an omarchy hook and one Hyprland rule
+  // — more than any eval can carry — so the flip runs the repo-owned
+  // fcitx5-theme.sh through its own Process (positional argv only: nothing
+  // QML-built reaches a shell, no quoting class applies). Optimistic flip
+  // like the pin/look toggles; the flag watcher corrects it if the script
+  // never lands the file. The guard drops clicks while a run is in flight —
+  // the script's multi-artifact work is idempotent, so the next click after
+  // it settles just re-applies; no retry logic.
+  function setFcitx(on) {
+    if (fcitxProc.running) {
+      console.warn("oma-swiss: fcitx5 toggle busy, click dropped")
+      return
+    }
+    console.log("oma-swiss: fcitx5 candidate theme", on ? "on" : "off")
+    fcitxOn = on
+    fcitxProc.command = ["timeout", "90", "sh", root.fcitxScriptPath, on ? "apply" : "unapply"]
+    fcitxProc.running = true
+  }
+
   function clearAspect() {
     console.log("oma-swiss: aspect off")
     aspectW = 0
@@ -775,6 +833,7 @@ BarWidget {
   //   omarchy-shell glasschan.oma-swiss pin            pin/unpin the hotkey
   //   omarchy-shell glasschan.oma-swiss look           opinionated looks on/off
   //   omarchy-shell glasschan.oma-swiss gaming         gaming mode on/off
+  //   omarchy-shell glasschan.oma-swiss fcitx          fcitx5 candidate theme on/off
   //   omarchy-shell glasschan.oma-swiss lang           cycle panel language en→zh→ja→ko→en
   //   omarchy-shell glasschan.oma-swiss panel          open/close popup
   IpcHandler {
@@ -786,6 +845,7 @@ BarWidget {
     function pin(): void { root.setPin(!root.pinHotkey) }
     function look(): void { root.setLook(!root.lookOn) }
     function gaming(): void { root.setGaming(!root.gamingOn) }
+    function fcitx(): void { root.setFcitx(!root.fcitxOn) }
     function lang(): void { root.toggleLang() }
     function panel(): void { root.togglePanel() }
     function open(): void { root.open() }
@@ -799,6 +859,8 @@ BarWidget {
         + " gaming=" + (root.gamingOn ? "on" : "off")
         + " lang=" + root.uiLang
         + " update=" + (root.updateAvailable ? root.latestVersion : "none")
+        + " fcitx=" + (root.fcitxOn ? "on" : "off")
+        + " version=" + root.pluginVersion
     }
   }
 
@@ -967,6 +1029,46 @@ BarWidget {
     onFileChanged: reload()
     onLoaded: root.gamingOn = true
     onLoadFailed: root.gamingOn = false
+  }
+
+  // Fcitx5 state mirrors the blur flag's existence, same as the pin, look
+  // and gaming files: watching covers the script's own mktemp+mv write
+  // (rename fires the watcher), external removal, and corrects the
+  // optimistic flip of a failed run — no retry logic anywhere.
+  FileView {
+    id: fcitxFlagFile
+    path: root.fcitxFlagPath
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.fcitxOn = true
+    onLoadFailed: root.fcitxOn = false
+  }
+
+  // One-shot runner for the fcitx5 apply/unapply script. The 90 s timeout
+  // bounds a wedged run (the script wraps every subprocess tighter still),
+  // and both streams are collected so a non-zero exit is diagnosable in the
+  // journal — hyprctl prints errors on stdout, so both are shown.
+  Process {
+    id: fcitxProc
+    stdout: StdioCollector {
+      id: fcitxOut
+      waitForEnd: true
+    }
+    stderr: StdioCollector {
+      id: fcitxErr
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        console.warn("oma-swiss: fcitx5-theme.sh failed (" + exitCode + "):",
+          (fcitxOut.text.trim() || fcitxErr.text.trim()))
+        // A failed run may have bailed before any flag write, so no watcher
+        // event will fire to correct the optimistic flip — re-read the flag
+        // now instead of trusting the watcher for failed runs.
+        fcitxFlagFile.reload()
+      }
+    }
   }
 
   // One-shot spawner for the quick actions. The actual tool runs detached
