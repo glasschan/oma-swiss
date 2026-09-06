@@ -73,6 +73,8 @@ omarchy-shell glasschan.oma-swiss look           # looks on/off
 omarchy-shell glasschan.oma-swiss gaming         # gaming mode on/off
 omarchy-shell glasschan.oma-swiss lang           # cycle UI language en→zh→ja→ko→en
 omarchy-shell glasschan.oma-swiss panel          # open/close popup
+omarchy-shell glasschan.oma-swiss open           # open the panel
+omarchy-shell glasschan.oma-swiss close          # close the panel
 omarchy-shell glasschan.oma-swiss status         # what's on right now
 ```
 
