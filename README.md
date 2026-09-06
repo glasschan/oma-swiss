@@ -96,7 +96,8 @@ Every tracked file in the repo, with its role:
 │       ├── ci.yml                    # CI: manifest validation + submission/hardening checks
 │       └── release.yml               # CI: tag-checked release packaging (zip + sha256 + GitHub Release)
 ├── design/
-│   └── cover.html                    # Source for the preview.png cover (rendered with headless Chromium)
+│   ├── cover.html                    # Source for the preview.png cover (rendered with headless Chromium)
+│   └── fcitx5-candidates.png         # Themed fcitx5 candidate strip embedded in the cover (2x NEAREST upscale)
 ├── docs/
 │   ├── agents/                       # Notes for coding agents: issue tracker, triage labels, domain docs
 │   │   ├── domain.md

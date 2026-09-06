@@ -147,9 +147,32 @@
   }
   .panel {
     display: block;
-    height: 830px; width: auto;
+    height: 742px; width: auto;
     border-radius: 26px;
     border: 1px solid rgba(244,245,247,0.16);
+  }
+
+  /* fcitx5 themed candidate strip: live capture, stacked under the panel */
+  .strip-block {
+    position: relative;
+    margin-top: 56px;
+  }
+  .fcitx-strip {
+    display: block;
+    width: 644px; height: 96px;   /* natural 2x size — 1:1 device pixels, stays crisp */
+  }
+  .strip-chip {
+    position: absolute; left: 0; bottom: calc(100% + 6px);
+    background: #14151A;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 13px 18px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  }
+  .strip-chip .label {
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-size: 18px; color: var(--ink-2); letter-spacing: 0.04em;
+    white-space: nowrap;
   }
 
   /* bar-icon chip: the "one icon" story, connected to the popup */
@@ -266,6 +289,10 @@
           <div class="connector"></div>
         </div>
         <img class="panel" src="../panel.png" alt="">
+        <div class="strip-block">
+          <div class="strip-chip"><div class="label">fcitx5 candidates · themed</div></div>
+          <img class="fcitx-strip" src="fcitx5-candidates.png" alt="fcitx5 themed candidate window">
+        </div>
       </div>
     </div>
   </div>

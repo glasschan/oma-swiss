@@ -62,7 +62,8 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 │       ├── ci.yml                    # CI：校驗 manifest，並執行提交規範與安全強化檢查
 │       └── release.yml               # CI：發布 GitHub Release（tag 須與 manifest 版本一致，打包 zip + sha256）
 ├── design/
-│   └── cover.html                    # preview.png 封面的原始檔（以 headless Chromium 轉譯）
+│   ├── cover.html                    # preview.png 封面的原始檔（以 headless Chromium 轉譯）
+│   └── fcitx5-candidates.png         # 封面內嵌的 fcitx5 主題候選字列截圖（2x 最近鄰放大）
 ├── docs/
 │   ├── agents/                       # 給編碼代理的操作說明：issue 追蹤、分類標籤、領域文件
 │   │   ├── domain.md
