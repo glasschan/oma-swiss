@@ -507,6 +507,11 @@ BarWidget {
   // worth caching.
   readonly property string manifestPath: Qt.resolvedUrl("manifest.json").toString().replace("file://", "")
   property string localVersion: ""
+  // Display-only view of the installed version (panel header label, the
+  // `status` tail) — the same parsed manifest value the badge compares
+  // against, never a second read or parse. "" until the manifest loads,
+  // and stays "" if it never parses.
+  readonly property string pluginVersion: localVersion
   property string latestVersion: ""
   property string updateNotes: ""
   property real updateCheckedAt: 0
@@ -855,6 +860,7 @@ BarWidget {
         + " lang=" + root.uiLang
         + " update=" + (root.updateAvailable ? root.latestVersion : "none")
         + " fcitx=" + (root.fcitxOn ? "on" : "off")
+        + " version=" + root.pluginVersion
     }
   }
 

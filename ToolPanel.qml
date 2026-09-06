@@ -233,6 +233,24 @@ Panel {
             text: root.t("sec_actions")
           }
 
+          // Installed version, read through the host's already-parsed
+          // manifest (pure-view rule: root.tool, never root). Muted and
+          // non-bold so it reads as a footnote beside the title; hidden
+          // entirely when the manifest never parsed ("" on the host).
+          // Anchored to the title, clear of the right-anchored badge and
+          // language button — their layout is untouched.
+          Text {
+            anchors.left: actionsHeader.right
+            anchors.leftMargin: Style.spacing.controlGap
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.tool && root.tool.pluginVersion ? "v" + root.tool.pluginVersion : ""
+            visible: text !== ""
+            color: Qt.darker(root.barForeground, 1.4)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            textFormat: Text.PlainText
+          }
+
           // Upgrade badge: appears left of the language switch only when a
           // newer GitHub release is known (state lives on the host widget).
           // Tabler refresh-alert, rendered through iconFont like every other
