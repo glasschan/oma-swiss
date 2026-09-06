@@ -26,8 +26,9 @@ from one popup that costs nothing while you're not using it.
   improvements welcome via PR.
 - **Told when an update lands.** A badge on the panel marks new GitHub
   releases, with the release notes in its tooltip; one click updates the
-  plugin on git installs. The check runs at most once a day — never on a
-  timer.
+  plugin on git installs, and the Omarchy shell restarts itself briefly
+  once the update lands, so the new version is guaranteed on screen. The
+  check runs at most once a day — never on a timer.
 
 ## The five tools
 

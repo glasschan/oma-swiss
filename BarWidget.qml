@@ -497,21 +497,30 @@ BarWidget {
   }
 
   // Badge click. Git-managed installs (marketplace / `omarchy plugin add
-  // <git-url>`) self-update in place: `omarchy plugin update` — Omarchy's
-  // shell hot-reloads plugin changes itself (debounced, watching the plugin
-  // dir), so the old code stops running once that reload completes. No shell
-  // restart: one forced `omarchy-restart-shell` during the reload raced the
-  // in-flight component creation and segfaulted the shell (issue #6).
+  // <git-url>`) self-update in place: `omarchy plugin update`, then — on an
+  // actual content update — sleep 3 and run `omarchy-restart-shell`. The
+  // restart is unconditional on success because the shell-side reload chain
+  // fails silently on some machines (the updater's rescanPlugins IPC only
+  // fires after "Updated" is printed, the inotifywait watcher needs
+  // inotify-tools, and older Omarchy rescans never re-executed already
+  // loaded QML), which left new files running old code until a manual
+  // restart (diagnosed 2026-09-06). The 3 s settle keeps the historical
+  // issue #6 crash closed — that crash was a forced restart racing the
+  // shell's watcher-triggered in-flight component reload, and the delay
+  // lets that reload finish first. Up-to-date and failed clicks do not
+  // restart. The sleep lives in this detached script, so the resource
+  // floor (no QML timers, no polling) is intact, and the whole script
+  // survives the restart because launchDetached already setsid -f's it.
   // Non-git installs (dev copies) fall back to the releases page. A failed
   // update (dirty tree, network) surfaces via one desktop notification,
-  // since the detached run otherwise swallows all output; up-to-date (and
-  // successful) clicks stay silent.
+  // since the detached run otherwise swallows all output; up-to-date
+  // clicks stay silent.
   function handleUpdateClick() {
     launchDetached(["sh", "-c",
       'd="$HOME/.config/omarchy/plugins/glasschan.oma-swiss"; '
       + 'if [ -d "$d/.git" ]; then '
       + 'out=$(omarchy plugin update glasschan.oma-swiss --yes 2>&1) || true; '
-      + 'printf %s "$out" | grep -q "^Updated" && exit 0; '
+      + 'printf %s "$out" | grep -q "^Updated" && { sleep 3; command -v omarchy-restart-shell >/dev/null 2>&1 && omarchy-restart-shell; exit 0; }; '
       + 'printf %s "$out" | grep -q "is up to date" && exit 0; '
       + 'timeout 10 omarchy-notification-send --app-name OmaSwiss -u normal '
       + shellQuote(tr("upd_fail"))
