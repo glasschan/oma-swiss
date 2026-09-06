@@ -83,9 +83,31 @@ Panel {
 
     // The row's own hover tool — PanelActionButton's pattern. Descriptions
     // must stay discoverable somewhere now that the cards are single-line.
+    // Width mirrors the header update-badge tooltip: capped at panel scale
+    // so a description never spans the screen, and the contentItem is
+    // overridden to wrap (WrapAtWordBoundaryOrAnywhere so CJK breaks
+    // cleanly); descriptions are 1–2 sentences, so no elide or line cap.
+    // Still a ToolTip — it renders in the Qt overlay layer, escaping the
+    // column's clip.
     PanelToolTip {
+      id: rowTip
       visible: rowMouse.containsMouse && toggleRow.tip !== ""
+      width: Math.min(implicitWidth, Style.space(300))
       text: toggleRow.tip
+
+      contentItem: Text {
+        text: rowTip.text
+        color: rowTip.panelForeground
+        font.family: rowTip.fontFamily
+        font.pixelSize: rowTip.fontSize
+        textFormat: Text.PlainText
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        width: rowTip.availableWidth
+        leftPadding: Border.left(rowTip.panelBorderSpec) + Style.spacing.controlPaddingX
+        rightPadding: Border.right(rowTip.panelBorderSpec) + Style.spacing.controlPaddingX
+        topPadding: Border.top(rowTip.panelBorderSpec) + Style.spacing.controlPaddingY
+        bottomPadding: Border.bottom(rowTip.panelBorderSpec) + Style.spacing.controlPaddingY
+      }
     }
 
     MouseArea {
