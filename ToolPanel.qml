@@ -219,30 +219,34 @@ Panel {
         height: Math.min(implicitHeight, panel.contentHeight - panel.verticalContentInset)
         clip: true
 
-        // Section header with the language switch parked at the panel's
-        // top-right corner — panel-level setting. The button shows the
-        // active language and opens the language menu.
+        // Panel header: the brand title (literal "OmaSwiss" — a brand name,
+        // never translated, no strings key, same convention as the bar
+        // tooltip's line 1), the muted version label beside it, and the
+        // upgrade badge + language switch parked at the panel's top-right
+        // corner — panel-level setting. The button shows the active language
+        // and opens the language menu.
         Item {
           width: parent.width
-          height: Math.max(actionsHeader.implicitHeight, langButton.size)
+          height: Math.max(brandHeader.implicitHeight, langButton.size)
 
           PanelSectionHeader {
-            id: actionsHeader
+            id: brandHeader
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: root.t("sec_actions")
+            text: "OmaSwiss"
           }
 
           // Installed version, read through the host's already-parsed
           // manifest (pure-view rule: root.tool, never root). Muted and
-          // non-bold so it reads as a footnote beside the title; hidden
-          // entirely when the manifest never parsed ("" on the host).
-          // Anchored to the title, clear of the right-anchored badge and
-          // language button — their layout is untouched.
+          // non-bold so it reads as a footnote beside the brand title;
+          // hidden entirely when the manifest never parsed ("" on the
+          // host). Baseline-aligned to the title, clear of the
+          // right-anchored badge and language button — their layout is
+          // untouched.
           Text {
-            anchors.left: actionsHeader.right
+            anchors.left: brandHeader.right
             anchors.leftMargin: Style.spacing.controlGap
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.baseline: brandHeader.baseline
             text: root.tool && root.tool.pluginVersion ? "v" + root.tool.pluginVersion : ""
             visible: text !== ""
             color: Qt.darker(root.barForeground, 1.4)
@@ -315,6 +319,11 @@ Panel {
               langButton.height + Style.space(4))
           }
         }
+
+        // Quick-actions section label — the old header title demoted to the
+        // same PanelSectionHeader treatment as 視窗比例 and 切換 below; the
+        // string key is unchanged in all four languages.
+        PanelSectionHeader { text: root.t("sec_actions") }
 
         // Eight cells in two rows of four: icon button over a caption label.
         // Stateless launchers — the tool owns the command list, this only
