@@ -51,6 +51,61 @@ omarchy-shell glasschan.oma-swiss close          # 關閉面板
 omarchy-shell glasschan.oma-swiss status         # 目前狀態
 ```
 
+## 專案結構
+
+repo 內所有被追蹤的檔案，以及各自的角色：
+
+```text
+.
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                    # CI：校驗 manifest，並執行提交規範與安全強化檢查
+│       └── release.yml               # CI：發布 GitHub Release（tag 須與 manifest 版本一致，打包 zip + sha256）
+├── design/
+│   └── cover.html                    # preview.png 封面的原始檔（以 headless Chromium 轉譯）
+├── docs/
+│   ├── agents/                       # 給編碼代理的操作說明：issue 追蹤、分類標籤、領域文件
+│   │   ├── domain.md
+│   │   ├── issue-tracker.md
+│   │   └── triage-labels.md
+│   └── fcitx5-candidate-theming.md   # fcitx5 開關的設計簡介與驗證清單
+├── scripts/
+│   ├── check-hardening.sh            # CI 安全基線 tripwire（引號處理、期限、原子寫入等類別）
+│   └── check-submission.sh           # CI 市集提交規範檢查（README 章節、LICENSE、預覽圖上限）
+├── AGENTS.md                         # 本 repo 的工作契約：契約、強化規則、E2E 清單
+├── BarWidget.qml                     # 進入點：全部狀態與動作、bar icon、IPC 介面
+├── EvalQueue.qml                     # 單槽佇列，讓連續的 hyprctl 切換依序落地
+├── LICENSE                           # MIT 授權
+├── README.md                         # 英文說明文件
+├── README.zh-Hant.md                 # 本檔案，與 README.md 保持內容對等
+├── ToolPanel.qml                     # 彈出面板：純視圖，由 BarWidget 以 hostWidget 注入
+├── fcitx5-theme.sh                   # fcitx5 開關的 apply／unapply／generate 腳本（主題、hook、classicui.conf）
+├── manifest.json                     # 插件 manifest：id、版本、進入點
+├── panel.png                         # 面板原始截圖（文件用）
+├── preview.png                       # 73:35 行銷封面，置於兩份 README 頂部
+├── tabler-icons.ttf                  # ~8 KB 的 Tabler Icons 子集（15 個 codepoint），bar 與面板共用
+└── .gitignore
+```
+
+插件安裝後，在 repo 以外接觸的所有路徑。各開關的旗標檔與 fcitx5 產物只存在於該功能開啟期間——關閉開關即刪除對應檔案，插件移除後不會殘留：
+
+| 路徑 | 用途 | 存在時機 |
+| --- | --- | --- |
+| `~/.config/omarchy/plugins/glasschan.oma-swiss/` | 已部署的插件副本——`omarchy plugin add` 安裝、面板更新標示更新的就是它 | 安裝期間 |
+| `~/.local/state/omarchy/toggles/hypr/super-alt-swap.lua` | 互換的旗標檔 | 互換開啟時 |
+| `~/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua` | 比例的旗標檔（內容即所選比例） | 設定比例期間 |
+| `~/.local/state/omarchy/toggles/hypr/opinionated-looks.lua` | Opinionated Looks 的旗標檔 | 外觀開啟時 |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-gaming-mode.lua` | 遊戲模式的旗標檔 | 遊戲模式開啟時 |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-hotkey.lua` | 比例快捷鍵固定的旗標檔 | 快捷鍵固定期間 |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` | fcitx5 的旗標檔（其唯一一行同時就是生效中的 Hyprland 模糊規則） | fcitx5 主題開啟時 |
+| `~/.local/state/glasschan.oma-swiss/lang` | 介面語言 | 首次變更語言後 |
+| `~/.local/state/glasschan.oma-swiss/last-aspect` | 上次設定的比例（驅動面板預填與固定快捷鍵） | 首次設定比例後 |
+| `~/.local/state/glasschan.oma-swiss/update-check` | 更新檢查快取（每日最多一次網路請求） | 首次開啟面板後 |
+| `~/.local/state/glasschan.oma-swiss/update-notes` | 待更新版本的 release 說明 | 僅在有待更新版本時 |
+| `~/.config/omarchy/hooks/theme-set.d/fcitx5` | fcitx5 重新配色 hook，呼叫已部署副本內的腳本 | fcitx5 主題開啟時 |
+| `~/.local/share/fcitx5/themes/omarchy/` | 產生的 fcitx5 主題 | fcitx5 主題開啟時 |
+| `~/.config/fcitx5/conf/classicui.conf` | fcitx5 的主題設定（`Theme=omarchy`）；原有檔案會先備份一次為 `classicui.conf.pre-oma-swiss` | fcitx5 主題開啟時（備份會保留） |
+
 ## 安裝／移除
 
 ```bash

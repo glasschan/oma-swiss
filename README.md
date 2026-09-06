@@ -85,6 +85,63 @@ omarchy-shell glasschan.oma-swiss close          # close the panel
 omarchy-shell glasschan.oma-swiss status         # what's on right now
 ```
 
+## Project layout
+
+Every tracked file in the repo, with its role:
+
+```text
+.
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                    # CI: manifest validation + submission/hardening checks
+│       └── release.yml               # CI: tag-checked release packaging (zip + sha256 + GitHub Release)
+├── design/
+│   └── cover.html                    # Source for the preview.png cover (rendered with headless Chromium)
+├── docs/
+│   ├── agents/                       # Notes for coding agents: issue tracker, triage labels, domain docs
+│   │   ├── domain.md
+│   │   ├── issue-tracker.md
+│   │   └── triage-labels.md
+│   └── fcitx5-candidate-theming.md   # Design brief + verification checklist for the fcitx5 toggle
+├── scripts/
+│   ├── check-hardening.sh            # CI tripwires for the security-baseline classes (quoting, deadlines, atomic writes)
+│   └── check-submission.sh           # CI checks for the marketplace submission rules (README sections, LICENSE, preview limits)
+├── AGENTS.md                         # Repo work contract: contracts, hardening rules, E2E checklist
+├── BarWidget.qml                     # Entry point: all state and actions, the bar icon, the IPC surface
+├── EvalQueue.qml                     # Single-slot queue so rapid hyprctl toggles land in order
+├── LICENSE                           # MIT
+├── README.md                         # This file
+├── README.zh-Hant.md                 # Traditional Chinese readme, kept in parity with this file
+├── ToolPanel.qml                     # The popup: a pure view injected with the BarWidget as hostWidget
+├── fcitx5-theme.sh                   # The fcitx5 toggle's apply/unapply/generate script (theme, hook, classicui.conf)
+├── manifest.json                     # Plugin manifest: id, version, entry point
+├── panel.png                         # Raw panel screenshot (docs)
+├── preview.png                       # 73:35 marketing cover at the top of the READMEs
+├── tabler-icons.ttf                  # ~8 KB Tabler Icons subset (15 codepoints) for the bar and panel icons
+└── .gitignore
+```
+
+And everything the plugin touches outside the repo once installed. Toggle
+flags and fcitx5 artifacts exist only while their feature is on — switching
+a toggle off removes its files, so nothing outlives the plugin:
+
+| Path | Role | Exists |
+| --- | --- | --- |
+| `~/.config/omarchy/plugins/glasschan.oma-swiss/` | The deployed copy — what `omarchy plugin add` installs and the update badge updates | while installed |
+| `~/.local/state/omarchy/toggles/hypr/super-alt-swap.lua` | Swap flag file | while the swap is on |
+| `~/.local/state/omarchy/toggles/hypr/single-window-aspect-ratio.lua` | Aspect flag file (its content is the chosen ratio) | while a ratio is set |
+| `~/.local/state/omarchy/toggles/hypr/opinionated-looks.lua` | Opinionated Looks flag file | while looks are on |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-gaming-mode.lua` | Gaming-mode flag file | while gaming mode is on |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-hotkey.lua` | Ratio-hotkey pin flag file | while the hotkey is pinned |
+| `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` | fcitx5 flag file (its one line is also the live Hyprland blur rule) | while fcitx5 theming is on |
+| `~/.local/state/glasschan.oma-swiss/lang` | UI language | after the first language change |
+| `~/.local/state/glasschan.oma-swiss/last-aspect` | Last ratio set (drives the panel prefill and the pinned hotkey) | after the first ratio is set |
+| `~/.local/state/glasschan.oma-swiss/update-check` | Update-check cache (at most one network touch per day) | after the first panel open |
+| `~/.local/state/glasschan.oma-swiss/update-notes` | Release notes for the pending update | only while an update is pending |
+| `~/.config/omarchy/hooks/theme-set.d/fcitx5` | fcitx5 retint hook, calling the deployed copy's script | while fcitx5 theming is on |
+| `~/.local/share/fcitx5/themes/omarchy/` | The generated fcitx5 theme | while fcitx5 theming is on |
+| `~/.config/fcitx5/conf/classicui.conf` | fcitx5's theme setting (`Theme=omarchy`); your own file is backed up once to `classicui.conf.pre-oma-swiss` | while fcitx5 theming is on (the backup is kept) |
+
 ## Install / Remove
 
 ```bash
