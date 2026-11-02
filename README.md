@@ -47,8 +47,9 @@ nothing while you're not using it.
   return, exactly.
 - **Fcitx5 candidate theme** — the fcitx5 input-method candidate window
   picks up the Omarchy palette with rounded corners, a translucent rim, and
-  vibrancy blur, and retints itself on every theme change. Switch it off
-  and fcitx5 returns to its defaults.
+  vibrancy blur, and retints itself on every theme change. Your own fcitx5
+  font setting is kept as-is. Switch it off and fcitx5 returns to its
+  defaults.
 - **Quick capture** — region / window / fullscreen screenshots, a color
   picker, OCR (English + 中文), QR scan (decoded text lands in the
   clipboard), and screen recording start/stop with or without your webcam,
@@ -141,7 +142,7 @@ a toggle off removes its files, so nothing outlives the plugin:
 | `~/.local/state/glasschan.oma-swiss/update-notes` | Release notes for the pending update | only while an update is pending |
 | `~/.config/omarchy/hooks/theme-set.d/fcitx5` | fcitx5 retint hook, calling the deployed copy's script | while fcitx5 theming is on |
 | `~/.local/share/fcitx5/themes/omarchy/` | The generated fcitx5 theme | while fcitx5 theming is on |
-| `~/.config/fcitx5/conf/classicui.conf` | fcitx5's theme setting (`Theme=omarchy`); your own file is backed up once to `classicui.conf.pre-oma-swiss` | while fcitx5 theming is on (the backup is kept) |
+| `~/.config/fcitx5/conf/classicui.conf` | fcitx5's theme setting (`Theme=omarchy`); only the theme keys are rewritten, so your font and other settings stay put — and your own file is backed up once to `classicui.conf.pre-oma-swiss` | while fcitx5 theming is on (the backup is kept) |
 
 ## Install / Remove
 

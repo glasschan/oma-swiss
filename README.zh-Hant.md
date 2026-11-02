@@ -22,7 +22,7 @@
 - **單一視窗比例** —— 1:1、4:3、3:2、16:9 預設，或自訂 `W:H`（最高 64）。比例在 reload 與登入後保持不變，原生的 `SUPER+CTRL+BACKSPACE` 綁定亦可同時使用。
 - **Opinionated Looks** —— 圓角、半透明 5px 邊框、柔和陰影與 vibrancy blur，一鍵切換；關閉即完全還原 Omarchy 預設。
 - **遊戲模式** —— 一鍵啟用 VRR（可變更新率）並允許畫面撕裂，追求最低輸入延遲；關閉即完全還原 Omarchy 預設值。
-- **輸入法候選視窗主題** —— fcitx5 候選視窗套用 Omarchy 配色，圓角、半透明邊框與 vibrancy blur，切換主題時自動重新配色；關閉即還原 fcitx5 預設。
+- **輸入法候選視窗主題** —— fcitx5 候選視窗套用 Omarchy 配色，圓角、半透明邊框與 vibrancy blur，切換主題時自動重新配色，你原有的字體設定維持不變；關閉即還原 fcitx5 預設。
 - **快速擷取** —— 區域／視窗／全螢幕截圖、螢幕取色、OCR（中英）、QR 碼掃描（解碼內容自動複製到剪貼簿），以及含網路攝影機與否的螢幕錄影開關，各一按即發。擷取覆疊需要乾淨畫面，工具啟動時面板會自動關閉讓出螢幕。
 
 ## 日常使用
@@ -105,7 +105,7 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 | `~/.local/state/glasschan.oma-swiss/update-notes` | 待更新版本的 release 說明 | 僅在有待更新版本時 |
 | `~/.config/omarchy/hooks/theme-set.d/fcitx5` | fcitx5 重新配色 hook，呼叫已部署副本內的腳本 | fcitx5 主題開啟時 |
 | `~/.local/share/fcitx5/themes/omarchy/` | 產生的 fcitx5 主題 | fcitx5 主題開啟時 |
-| `~/.config/fcitx5/conf/classicui.conf` | fcitx5 的主題設定（`Theme=omarchy`）；原有檔案會先備份一次為 `classicui.conf.pre-oma-swiss` | fcitx5 主題開啟時（備份會保留） |
+| `~/.config/fcitx5/conf/classicui.conf` | fcitx5 的主題設定（`Theme=omarchy`）；只改寫主題相關的鍵，字體與其他設定維持不變，原有檔案會先備份一次為 `classicui.conf.pre-oma-swiss` | fcitx5 主題開啟時（備份會保留） |
 
 ## 安裝／移除
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # fcitx5-theme.sh — glasschan.oma-swiss fcitx5 candidate-window theming.
 #
-# apply    install classicui.conf + theme-set hook + blur flag, then generate
+# apply    merge classicui.conf + theme-set hook + blur flag, then generate
 # unapply  remove everything this feature owns; fcitx5/Hyprland back to stock
 # generate re-render the theme from the ACTIVE Omarchy palette (also the
 #          theme-set hook body: omarchy-theme-set runs it on every theme
@@ -38,6 +38,15 @@ SERVICE="omarchy-fcitx5.service"
 # plugin's state (FileView watch + status). Exactly one line.
 FLAG_LUA='hl.layer_rule({ match = { namespace = "fcitx" }, blur = true })'
 
+# The ONLY classicui.conf keys this feature owns. Everything else in the
+# user's file — Font, MenuFont, TrayFont, VerticalCandidateList, their
+# comments — is carried through verbatim: the toggle themes the candidate
+# window, it must never reset the IME's font or any other setting (issue
+# #14, 2026-09-20). The default font is written only when the file carries
+# no Font= line at all (a fresh install), never over one.
+CLASSICUI_OWNED_SETS="Theme=omarchy|DarkTheme=omarchy|UseDarkTheme=False|PerScreenDPI=True"
+CLASSICUI_DEFAULT_FONT='"OPPO Sans 4.0 11"'
+
 # Legacy block left behind by the standalone installer this feature absorbed.
 BEGIN_MARKER="-- BEGIN fcitx5 candidate blur (setup-fcitx5-theme.sh)"
 END_MARKER="-- END fcitx5 candidate blur (setup-fcitx5-theme.sh)"
@@ -53,6 +62,81 @@ atomic_write() {
   cat >"$_aw_tmp" &&
     mv -f -- "$_aw_tmp" "$_aw_target" ||
     { rm -f -- "$_aw_tmp"; return 1; }
+}
+
+# classicui.conf as this feature wants it: a MERGE, never a replacement.
+# Every line of the user's own file is carried through verbatim except the
+# four owned keys, which are rewritten in place (missing ones appended at the
+# end). No line is ever dropped here, so a user-set Font survives every
+# apply — the issue #14 contract. A missing file (fresh install) gets the
+# full shipped default, font included.
+classicui_merged_content() {
+  if [ ! -f "$CLASSICUI_CONF" ]; then
+    printf '%s\n' "$CLASSICUI_OWNED_SETS" | tr '|' '\n'
+    printf 'Font=%s\n' "$CLASSICUI_DEFAULT_FONT"
+    return 0
+  fi
+  awk -v sets="$CLASSICUI_OWNED_SETS" -v font="$CLASSICUI_DEFAULT_FONT" '
+    function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+    function keyof(line,   eq) {
+      eq = index(line, "=")
+      return eq > 0 ? trim(substr(line, 1, eq - 1)) : ""
+    }
+    BEGIN {
+      n = split(sets, pair, "|")
+      for (i = 1; i <= n; i++) {
+        eq = index(pair[i], "=")
+        names[i] = substr(pair[i], 1, eq - 1)
+        vals[i] = substr(pair[i], eq + 1)
+        want[names[i]] = i
+      }
+    }
+    {
+      key = keyof($0)
+      if (key in want) {
+        print names[want[key]] "=" vals[want[key]]
+        seen[key] = 1
+        next
+      }
+      if (key == "Font") seen["Font"] = 1
+      print
+    }
+    END {
+      for (i = 1; i <= n; i++) if (!(names[i] in seen)) print names[i] "=" vals[i]
+      if (!("Font" in seen)) print "Font=" font
+    }
+  ' "$CLASSICUI_CONF"
+}
+
+# The user's file with this feature's keys removed — used by unapply when
+# there is no backup to restore, so the file was already ours before apply.
+# Everything we do not own stays, Font included. A Font line equal to our
+# shipped default also counts as ours: we write that line only on a fresh
+# install (where no backup exists), and a user who set their own font either
+# has the backup or typed something else.
+classicui_unowned_content() {
+  awk -v sets="$CLASSICUI_OWNED_SETS" -v font="$CLASSICUI_DEFAULT_FONT" '
+    function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+    function keyof(line,   eq) {
+      eq = index(line, "=")
+      return eq > 0 ? trim(substr(line, 1, eq - 1)) : ""
+    }
+    function valof(line,   eq) {
+      eq = index(line, "=")
+      return eq > 0 ? trim(substr(line, eq + 1)) : ""
+    }
+    BEGIN {
+      n = split(sets, pair, "|")
+      for (i = 1; i <= n; i++) owned[substr(pair[i], 1, index(pair[i], "=") - 1)] = 1
+      ours_font = "Font=" font
+    }
+    {
+      key = keyof($0)
+      if (key in owned) next
+      if (key == "Font" && "Font=" valof($0) == ours_font) next
+      print
+    }
+  ' "$CLASSICUI_CONF"
 }
 
 # theme_token KEY FALLBACK — one semantic palette token from the live Omarchy
@@ -319,13 +403,9 @@ apply() {
   # 2. classicui.conf — fcitx5 conf/*.conf files are SECTION-LESS key=value:
   #    an [INI] header makes fcitx5 file every key under a section it never
   #    reads and silently fall back to defaults (hard-won fact #1).
-  atomic_write "$CLASSICUI_CONF" <<'EOF' || return 1
-Theme=omarchy
-DarkTheme=omarchy
-UseDarkTheme=False
-PerScreenDPI=True
-Font="OPPO Sans 4.0 11"
-EOF
+  #    MERGED, not replaced: only the four owned keys are rewritten, so the
+  #    user's own Font (and every other key) survives the toggle (issue #14).
+  classicui_merged_content | atomic_write "$CLASSICUI_CONF" || return 1
 
   # 3. theme-set hook: omarchy-theme-set runs it on every theme change, so
   #    the candidate window retints itself even when the bar is not loaded.
@@ -362,19 +442,27 @@ unapply() {
   # 2. Hook out — no more retints.
   rm -f -- "$HOOK_FILE"
 
-  # 3. classicui.conf: only touch it when we own it — BOTH fingerprints must
-  #    match (Theme=omarchy AND our Font line; apply always writes both), so
-  #    a foreign file that merely carries Theme=omarchy is left alone.
+  # 3. classicui.conf: only touch it when we own it (the live file carries
+  #    our Theme=omarchy). A backup means apply merged into the user's own
+  #    file — restoring it is the exact pre-toggle state. Without one, the
+  #    file was already ours: strip ONLY the keys this feature owns and keep
+  #    everything else (the user's Font above all); an empty remainder means
+  #    we created the file, so it goes away.
   if [ -f "$CLASSICUI_CONF" ]; then
-    if grep -q '^Theme=omarchy$' "$CLASSICUI_CONF" 2>/dev/null &&
-      grep -qF 'Font="OPPO Sans 4.0 11"' "$CLASSICUI_CONF" 2>/dev/null; then
-      if [ -f "$CLASSICUI_BACKUP" ]; then
-        mv -f -- "$CLASSICUI_BACKUP" "$CLASSICUI_CONF"
+    if [ -f "$CLASSICUI_BACKUP" ]; then
+      mv -f -- "$CLASSICUI_BACKUP" "$CLASSICUI_CONF"
+    elif grep -q '^Theme=omarchy$' "$CLASSICUI_CONF" 2>/dev/null; then
+      _cc_dir=$(dirname -- "$CLASSICUI_CONF")
+      _cc_tmp=$(mktemp -- "$_cc_dir/.oma-swiss-fcitx5.XXXXXX") || return 1
+      if classicui_unowned_content >"$_cc_tmp" &&
+        ! grep -qv '^[[:space:]]*$' "$_cc_tmp"; then
+        rm -f -- "$_cc_tmp" "$CLASSICUI_CONF"
       else
-        rm -f -- "$CLASSICUI_CONF"
+        mv -f -- "$_cc_tmp" "$CLASSICUI_CONF" ||
+          { rm -f -- "$_cc_tmp"; return 1; }
       fi
     else
-      echo "fcitx5-theme: $CLASSICUI_CONF is not ours (fingerprint mismatch), leaving it untouched" >&2
+      echo "fcitx5-theme: $CLASSICUI_CONF is not ours (no Theme=omarchy), leaving it untouched" >&2
     fi
   fi
 

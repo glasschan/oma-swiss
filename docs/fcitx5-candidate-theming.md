@@ -52,7 +52,8 @@ Everything above is generated/installed by `setup-fcitx5-theme.sh` (`-i/-f/-u/-s
 9. **One highlight style applies to ALL candidate rows** — per-row rounding is impossible. Uniform 5px is the approved compromise.
 10. **fcitx5 silently ignores unknown INI sections/keys** (that's how bug #1 hid). Also makes shotgun-testing a section name safe: both `[InputPanel/Highlight]` and `[InputPanel/HighlightBackground]` are written; whichever is real takes effect.
 11. **`omazed` is unrelated** — it's a Zed-editor theme syncer that also lives in `theme-set.d`. Don't confuse it with OmaSwiss or touch its hook block (`# >>> omazed hook - do not edit >>>`).
-12. **User taste (binding):** compact padding; the inflated version (ContentMargin 14 + pill radius 12) was rejected as "一啲都唔好睇". Do not enlarge paddings/boxes. Font is exactly `OPPO Sans 4.0` (family name; "OPPO Sans" won't match), size 11.
+12. **User taste (binding):** compact padding; the inflated version (ContentMargin 14 + pill radius 12) was rejected as "一啲都唔好睇". Do not enlarge paddings/boxes. Font is exactly `OPPO Sans 4.0` (family name; "OPPO Sans" won't match), size 11 — as the DEFAULT for a fresh install only.
+13. **`classicui.conf` is a shared user file, not our artifact** (issue #14, 2026-09-20). It holds the user's font (`Font`, `MenuFont`, `TrayFont`) and unrelated display keys. Apply must merge the four owned keys (`Theme`, `DarkTheme`, `UseDarkTheme`, `PerScreenDPI`) into it and never rewrite it wholesale; the default font is written only when no `Font=` line exists. Rewriting the whole file reset the reporter's candidate font.
 
 ## 3. Theme.conf reference (generated, annotated)
 
@@ -95,6 +96,15 @@ PerScreenDPI=True
 Font="OPPO Sans 4.0 11"
 ```
 
+Only the first four keys are owned by this feature. They are MERGED into the
+user's file (rewritten in place, missing ones appended) — never a full
+replacement — so a user-set `Font`, `MenuFont`, `TrayFont`,
+`VerticalCandidateList` and any comments survive an apply untouched. The
+font line above is written only when the file has no `Font=` line at all
+(i.e. a fresh install); a font the user already configured always wins
+(issue #14, 2026-09-20). The verbatim block above is therefore the
+fresh-install default file, not the shape a merged file takes.
+
 ### Hyprland piece (marker block in `~/.config/hypr/looknfeel.lua`)
 
 ```lua
@@ -115,8 +125,8 @@ Follow the existing toggle contract ("one flag file owns the feature; absent = s
 ### Implemented contract
 
 - **Flag:** `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` (see the two amendments above). Apply writes it LAST; unapply removes it FIRST.
-- **ON** = `fcitx5-theme.sh apply`: back up the user's own `classicui.conf` once (`classicui.conf.pre-oma-swiss`, cp -p, never overwritten), install the section-less `classicui.conf`, install the `theme-set.d/fcitx5` hook, legacy cleanup, write the flag + `hyprctl reload`, generate for the current palette, restart the service (guarded — a stopped `omarchy-fcitx5.service` is never force-started). Idempotent throughout.
-- **OFF** = `fcitx5-theme.sh unapply`: remove flag + reload, remove hook, restore or remove `classicui.conf` (only when it contains `Theme=omarchy` — never touch a file we don't own), `rm -rf` the theme dir, legacy cleanup, guarded service restart.
+- **ON** = `fcitx5-theme.sh apply`: back up the user's own `classicui.conf` once (`classicui.conf.pre-oma-swiss`, cp -p, never overwritten), MERGE the four owned keys into `classicui.conf` (the user's font and every other key stay as they are — issue #14), install the `theme-set.d/fcitx5` hook, legacy cleanup, write the flag + `hyprctl reload`, generate for the current palette, restart the service (guarded — a stopped `omarchy-fcitx5.service` is never force-started). Idempotent throughout.
+- **OFF** = `fcitx5-theme.sh unapply`: remove flag + reload, remove hook, then `classicui.conf`: with a backup, restore it (the exact pre-toggle file); without one, the file was already ours, so strip only the four owned keys and keep everything else — the user's font above all — removing the file only when nothing but blank lines remain. Never touch a file that carries no `Theme=omarchy`. Then `rm -rf` the theme dir, legacy cleanup, guarded service restart.
 - **Retint decision (a) stands** — the Omarchy hook is kept, but its one line now invokes the plugin's own co-located script: `sh "$HOME/.config/omarchy/plugins/glasschan.oma-swiss/fcitx5-theme.sh" generate`. The generator no longer lives in `~/.local/bin`.
 - **QML:** `setFcitx(on)` in `BarWidget.qml` follows the looks/pin family (optimistic flip + dedicated `fcitxProc` with a `running` reentrancy guard + flag-watcher correction) — NOT flagEval/EvalQueue (no single hyprctl eval can carry three systems) and NOT launchDetached (the toggle must stay guard-interruptible). The Process runs `["timeout", "90", "sh", fcitxScriptPath, "apply"|"unapply"]` — positional argv only, nothing QML-concatenated. The row sits between Opinionated Looks and pin in the toggle group.
 
@@ -130,8 +140,9 @@ Follow the existing toggle contract ("one flag file owns the feature; absent = s
 2. Type (real keystrokes only — see fact #5): popup shows current palette, rounded corners, translucent rim, blur, rounded highlight; highlight stays inside the rim.
 3. `omarchy-theme-set <another-theme>` → popup retints automatically (PNGs re-rendered). Verified across tokyo-night → ristretto → miasma during development.
 4. `stat -c '%x' ~/.local/share/fcitx5/themes/omarchy/theme.conf` — fresh atime after a popup proves classicui loaded it (fact #4).
-5. Toggle OFF → the flag and all artifacts gone (classicui.conf restored/removed only when BOTH of the script's fingerprints match — `Theme=omarchy` AND `Font="OPPO Sans 4.0 11"`; a foreign file is left untouched with a warning); popup back to fcitx5 default; no orphan hook entries; `looknfeel.lua` keeps no leftover legacy marker lines (the standalone block is stripped on every apply AND unapply).
+5. Toggle OFF → the flag and all artifacts gone (classicui.conf restored from the backup when one exists; without one, only the four owned keys are stripped and a file that becomes empty is removed — never a file without `Theme=omarchy`); popup back to fcitx5 default; no orphan hook entries; `looknfeel.lua` keeps no leftover legacy marker lines (the standalone block is stripped on every apply AND unapply).
 6. Idempotency: run `fcitx5-theme.sh apply` twice → byte-identical artifacts, existing backup never clobbered.
+7. Font preservation (issue #14): with a custom `Font="Sarasa Term TC 12"` (plus `MenuFont=`, `VerticalCandidateList=True`) in classicui.conf, apply → those lines survive byte-for-byte, apply again → no duplicated keys, unapply (backup path) → byte-identical to the original file; without a backup → unapply keeps the custom font and other keys and drops only `Theme`/`DarkTheme`/`UseDarkTheme`/`PerScreenDPI`.
 
 ## 6. File map
 
