@@ -286,12 +286,12 @@ BarWidget {
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 15 codepoints
+  // so the bundled tabler-icons.ttf is a subset holding only the 16 codepoints
   // this plugin uses (8 KB). Rebuild it from the upstream webfont (fetch
   // dist/fonts/tabler-icons.ttf from @tabler/icons-webfont, e.g. on
   // jsdelivr) when an icon changes:
   //   python -m fontTools.subset tabler-icons-full.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C,U+EF78 \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C,U+EF78,U+EB64 \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through
@@ -412,6 +412,8 @@ BarWidget {
       pin_label: "Pin ratio hotkey",
       pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
       lid_fail: "Could not hold the lid switch, so lid-awake is off again.",
+      lid_label: "Awake with lid closed",
+      lid_desc: "The lid no longer suspends the machine: close it first, then plug HDMI, DP or Type-C and the external display comes up. The built-in panel is turned off by Omarchy's clamshell handling once a display is attached. Idle lock still applies, and the machine keeps running while closed, so turn this off before packing.",
       off: "Off",
       width: "Width", height: "Height", apply: "Apply",
       active: "Active", custom: "custom", offState: "off",
@@ -444,6 +446,8 @@ BarWidget {
       pin_label: "固定比例快捷鍵",
       pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
       lid_fail: "無法取得機蓋控制權，闔蓋保持運作已關閉。",
+      lid_label: "闔蓋保持運作",
+      lid_desc: "闔上機蓋不再進入休眠：可先闔蓋，再連接 HDMI、DP 或 Type-C 外接螢幕。接上外接螢幕後，Omarchy 的闔蓋處理會關閉內建螢幕。閒置鎖定仍然生效，且闔蓋期間電腦持續運作，收納前請先關閉此項。",
       off: "關",
       width: "寬", height: "高", apply: "套用",
       active: "目前", custom: "自訂", offState: "關閉",
@@ -476,6 +480,8 @@ BarWidget {
       pin_label: "比率ホットキーを固定",
       pin_desc: "SUPER+CTRL+BACKSPACE が、既定の 1:1 の代わりに最後に設定した比率を切り替えます。いつでも元に戻せます。",
       lid_fail: "蓋スイッチを抑止できなかったため、蓋を閉じて継続をオフに戻しました。",
+      lid_label: "蓋を閉じて継続",
+      lid_desc: "蓋を閉じてもスリープしません。先に蓋を閉じてから HDMI・DP・Type-C の外部ディスプレイを接続できます。外部ディスプレイを接続すると、Omarchy のクラムシェル処理が内蔵パネルをオフにします。アイドル時のロックは有効なままで、蓋を閉じたまま動作し続けるため、持ち運ぶ前にはオフにしてください。",
       off: "オフ",
       width: "幅", height: "高さ", apply: "適用",
       active: "現在", custom: "カスタム", offState: "オフ",
@@ -508,6 +514,8 @@ BarWidget {
       pin_label: "비율 단축키 고정",
       pin_desc: "SUPER+CTRL+BACKSPACE 키가 기본 1:1 대신 마지막으로 설정한 비율을 전환합니다. 언제든지 되돌릴 수 있습니다.",
       lid_fail: "덮개 스위치를 유지하지 못해 덮개 닫고 계속 실행을 다시 껐습니다.",
+      lid_label: "덮개 닫고 계속 실행",
+      lid_desc: "덮개를 닫아도 절전 모드로 전환되지 않습니다. 덮개를 먼저 닫은 뒤 HDMI·DP·Type-C 외부 디스플레이를 연결할 수 있습니다. 외부 디스플레이를 연결하면 Omarchy의 클램셸 처리로 내장 패널이 꺼집니다. 유휴 잠금은 그대로 적용되며, 덮개를 닫은 채로 계속 동작하므로 이동 전에 꺼 주십시오.",
       off: "끄기",
       width: "너비", height: "높이", apply: "적용",
       active: "현재", custom: "사용자 지정", offState: "꺼짐",
