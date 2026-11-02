@@ -94,7 +94,7 @@ Every tracked file in the repo, with its role:
 .
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                    # CI: manifest validation + submission/hardening checks
+│       ├── ci.yml                    # CI: manifest validation + submission/hardening checks + fcitx5 conf regression test
 │       └── release.yml               # CI: tag-checked release packaging (zip + sha256 + GitHub Release)
 ├── design/
 │   ├── cover.html                    # Source for the preview.png cover (rendered with headless Chromium)
@@ -107,7 +107,8 @@ Every tracked file in the repo, with its role:
 │   └── fcitx5-candidate-theming.md   # Design brief + verification checklist for the fcitx5 toggle
 ├── scripts/
 │   ├── check-hardening.sh            # CI tripwires for the security-baseline classes (quoting, deadlines, atomic writes)
-│   └── check-submission.sh           # CI checks for the marketplace submission rules (README sections, LICENSE, preview limits)
+│   ├── check-submission.sh           # CI checks for the marketplace submission rules (README sections, LICENSE, preview limits)
+│   └── test-fcitx5-conf.sh           # CI regression test: the fcitx5 toggle's classicui.conf merge keeps the user's font (issue #14)
 ├── AGENTS.md                         # Repo work contract: contracts, hardening rules, E2E checklist
 ├── BarWidget.qml                     # Entry point: all state and actions, the bar icon, the IPC surface
 ├── EvalQueue.qml                     # Single-slot queue so rapid hyprctl toggles land in order
