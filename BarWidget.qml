@@ -1290,11 +1290,14 @@ BarWidget {
     }
   }
 
-  // Load-time sweep. A shell killed with SIGKILL leaves its inhibitor child
+  // Load-time sweep. A shell killed with SIGKILL leaves its inhibitor children
   // alive, which would keep lid handling disabled forever with nothing in the
   // UI showing it. The sweep reads logind's own JSON listing (no pgrep pattern
   // that could match its own command line), keeps the PIDs whose --why carries
-  // our marker, and kills exactly those before anything is armed.
+  // our marker, and kills the ones whose parent is NOT this shell — one bar
+  // instance exists per monitor, so a sibling instance's live inhibitor must
+  // survive (it is one process per instance by design: identical locks, each
+  // released when the state file turns off, and harmless while duplicated).
   Process {
     id: lidSweepProc
     command: ["timeout", "10", "systemd-inhibit", "--list", "--json=short"]
@@ -1321,7 +1324,15 @@ BarWidget {
         return
       }
       console.log("oma-swiss: sweeping stale lid inhibitors", pids.join(","))
-      lidStaleProc.command = ["kill"].concat(pids)
+      // $PPID is this shell: a leftover from a dead shell was reparented away
+      // from it, so only those get killed.
+      lidStaleProc.command = ["sh", "-c",
+        'for pid in "$@"; do '
+        + 'case $pid in ""|*[!0-9]*) continue;; esac; '
+        + 'pp=$(sed -n "s/^PPid:[[:space:]]*//p" "/proc/$pid/status" 2>/dev/null); '
+        + '[ "$pp" = "$PPID" ] && continue; '
+        + 'kill "$pid" 2>/dev/null || true; '
+        + 'done', "sh"].concat(pids)
       lidStaleProc.running = true
     }
   }

@@ -112,7 +112,7 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 | `~/.local/share/fcitx5/themes/omarchy/` | 產生的 fcitx5 主題 | fcitx5 主題開啟時 |
 | `~/.config/fcitx5/conf/classicui.conf` | fcitx5 的主題設定（`Theme=omarchy`）；只改寫主題相關的鍵，字體與其他設定維持不變，原有檔案會先備份一次為 `classicui.conf.pre-oma-swiss` | fcitx5 主題開啟時（備份會保留） |
 
-闔蓋開關除狀態檔外不新增任何檔案：開啟期間，鎖定由 shell 啟動的一個閒置 `systemd-inhibit` 行程持有，並隨 shell 結束而消失。
+闔蓋開關除狀態檔外不新增任何檔案：開啟期間，鎖定由每個 bar 實例各自啟動的一個閒置 `systemd-inhibit` 行程持有（彼此鎖定內容相同、一起釋放），並隨 shell 結束而消失。
 
 ## 安裝／移除
 

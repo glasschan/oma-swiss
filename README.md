@@ -156,8 +156,8 @@ a toggle off removes its files, so nothing outlives the plugin:
 | `~/.config/fcitx5/conf/classicui.conf` | fcitx5's theme setting (`Theme=omarchy`); only the theme keys are rewritten, so your font and other settings stay put — and your own file is backed up once to `classicui.conf.pre-oma-swiss` | while fcitx5 theming is on (the backup is kept) |
 
 The lid toggle adds no file beyond its state file: while it is on, the lock is
-held by one idle `systemd-inhibit` process started by the shell, and it
-disappears with the shell.
+held by one idle `systemd-inhibit` process per bar instance (identical locks,
+released together), and they disappear with the shell.
 
 ## Install / Remove
 

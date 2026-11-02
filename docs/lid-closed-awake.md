@@ -34,6 +34,11 @@ neither suspend nor lock — whether or not a display is attached. No root, no
 sudo, no `logind.conf` drop-in. Turning the toggle off stops the process, which
 drops the lock.
 
+The shell runs one bar instance per monitor, so on a multi-monitor setup each
+instance holds its own identical lock. That is deliberate: nothing ever kills a
+sibling's live lock, every instance follows the same state file, and switching
+the toggle off releases all of them together.
+
 The lock is therefore only as long-lived as the process holding it. That shapes
 the rest of the design:
 

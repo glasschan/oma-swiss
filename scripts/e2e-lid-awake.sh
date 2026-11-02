@@ -89,8 +89,9 @@ ipc lid >/dev/null
 wait_for on || fail "status did not report lid=on after toggling on"
 pids=$(inhibitor_pids)
 [[ -n $pids ]] || fail "no inhibitor carrying the marker while on"
-[[ $(wc -w <<<"$pids") -eq 1 ]] || fail "expected one inhibitor, found: $pids"
-pass "on holds exactly one inhibited lid switch (pid $pids)"
+# One bar instance exists per monitor, and each holds its own identical lock, so
+# the count is per-instance (1 on a single-bar setup, N on N bars).
+pass "on holds the lid switch (pids: $pids)"
 
 systemd-inhibit --list | grep -F "$MARKER" | grep -q handle-lid-switch \
   || fail "the held inhibitor is not a handle-lid-switch block"
