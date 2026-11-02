@@ -4,14 +4,14 @@ English · [繁體中文](README.zh-Hant.md)
 
 [![CI](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml/badge.svg)](https://github.com/glasschan/oma-swiss/actions/workflows/ci.yml)
 
-![OmaSwiss — one bar icon, six Hyprland tools](preview.png)
+![OmaSwiss — one bar icon, seven laptop & Hyprland tools](preview.png)
 
-**One bar icon. Six Hyprland tools.**
+**One bar icon. Seven laptop & Hyprland tools.**
 
-Swap your laptop's Super and Alt keys, lock the lone window to any aspect
-ratio, restyle your desktop, tune for gaming, theme your input method's
-candidate window, and capture your screen — all from one popup that costs
-nothing while you're not using it.
+Close the lid without suspending, swap your laptop's Super and Alt keys, lock the
+lone window to any aspect ratio, restyle your desktop, tune for gaming, theme your
+input method's candidate window, and capture your screen — all from one popup
+that costs nothing while you're not using it.
 
 ## Why you'll keep it installed
 
@@ -19,9 +19,10 @@ nothing while you're not using it.
   Right-click the bar icon to flip the Super⇄Alt swap instantly.
 - **Idle cost: one bar icon.** No daemon, no timers, no polling. When the
   popup is closed, the plugin is effectively asleep.
-- **Survives updates and relogins.** Toggles write the same state files
-  Omarchy itself uses, so your settings hold across reloads, reboots, and
-  `omarchy update` — and the Omarchy menu keeps working alongside.
+- **Survives updates and relogins.** Each toggle writes one small state
+  file — Omarchy's own toggle files where Omarchy owns the setting — so your
+  choices hold across reloads, reboots, and `omarchy update`, and the Omarchy
+  menu keeps working alongside.
 - **Four UI languages.** English, 繁體中文, 日本語, and 한국어 from one
   header menu. The Japanese and Korean translations are machine-assisted —
   improvements welcome via PR.
@@ -31,8 +32,14 @@ nothing while you're not using it.
   once the update lands, so the new version is guaranteed on screen. The
   check runs at most once a day — never on a timer.
 
-## The six tools
+## The seven tools
 
+- **Awake with lid closed** (laptop only) — close the lid before plugging
+  anything in. The machine stops suspending on the lid switch, so you can put it
+  on a stand first and attach HDMI, DP or Type-C afterwards. The built-in panel
+  is switched off by Omarchy's own clamshell handling once a display is
+  attached, and idle locking still works. It keeps running while closed, so turn
+  it off before packing the laptop.
 - **Super ⇄ Alt swap** — trade the left Super and Alt keys on the built-in
   laptop keyboard, whenever you want. External keyboards are never touched.
 - **Single-window aspect ratio** — keep the lone window honest: 1:1, 4:3,
@@ -104,10 +111,12 @@ Every tracked file in the repo, with its role:
 │   │   ├── domain.md
 │   │   ├── issue-tracker.md
 │   │   └── triage-labels.md
-│   └── fcitx5-candidate-theming.md   # Design brief + verification checklist for the fcitx5 toggle
+│   ├── fcitx5-candidate-theming.md   # Design brief + verification checklist for the fcitx5 toggle
+│   └── lid-closed-awake.md           # Why the lid needs an inhibitor, what it does not do, and the manual checklist
 ├── scripts/
 │   ├── check-hardening.sh            # CI tripwires for the security-baseline classes (quoting, deadlines, atomic writes)
 │   ├── check-submission.sh           # CI checks for the marketplace submission rules (README sections, LICENSE, preview limits)
+│   ├── e2e-lid-awake.sh              # E2E for the lid toggle against a live session (deliberately not run by CI)
 │   └── test-fcitx5-conf.sh           # CI regression test: the fcitx5 toggle's classicui.conf merge keeps the user's font (issue #14)
 ├── AGENTS.md                         # Repo work contract: contracts, hardening rules, E2E checklist
 ├── BarWidget.qml                     # Entry point: all state and actions, the bar icon, the IPC surface
@@ -120,7 +129,7 @@ Every tracked file in the repo, with its role:
 ├── manifest.json                     # Plugin manifest: id, version, entry point
 ├── panel.png                         # Raw panel screenshot (docs)
 ├── preview.png                       # 73:35 marketing cover at the top of the READMEs
-├── tabler-icons.ttf                  # ~8 KB Tabler Icons subset (15 codepoints) for the bar and panel icons
+├── tabler-icons.ttf                  # ~8 KB Tabler Icons subset (16 codepoints) for the bar and panel icons
 └── .gitignore
 ```
 
@@ -139,11 +148,16 @@ a toggle off removes its files, so nothing outlives the plugin:
 | `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` | fcitx5 flag file (its one line is also the live Hyprland blur rule) | while fcitx5 theming is on |
 | `~/.local/state/glasschan.oma-swiss/lang` | UI language | after the first language change |
 | `~/.local/state/glasschan.oma-swiss/last-aspect` | Last ratio set (drives the panel prefill and the pinned hotkey) | after the first ratio is set |
+| `~/.local/state/glasschan.oma-swiss/lid-awake` | Lid-awake toggle state (its existence is the state) | while the lid toggle is on |
 | `~/.local/state/glasschan.oma-swiss/update-check` | Update-check cache (at most one network touch per day) | after the first panel open |
 | `~/.local/state/glasschan.oma-swiss/update-notes` | Release notes for the pending update | only while an update is pending |
 | `~/.config/omarchy/hooks/theme-set.d/fcitx5` | fcitx5 retint hook, calling the deployed copy's script | while fcitx5 theming is on |
 | `~/.local/share/fcitx5/themes/omarchy/` | The generated fcitx5 theme | while fcitx5 theming is on |
 | `~/.config/fcitx5/conf/classicui.conf` | fcitx5's theme setting (`Theme=omarchy`); only the theme keys are rewritten, so your font and other settings stay put — and your own file is backed up once to `classicui.conf.pre-oma-swiss` | while fcitx5 theming is on (the backup is kept) |
+
+The lid toggle adds no file beyond its state file: while it is on, the lock is
+held by one idle `systemd-inhibit` process started by the shell, and it
+disappears with the shell.
 
 ## Install / Remove
 
@@ -158,7 +172,9 @@ deletes the file, so nothing outlives the plugin. Switch the **Fcitx5
 candidate theme** off before removing in particular: while on, it installs a
 theme-retint hook that points into the plugin directory, and removing the
 plugin with the toggle still on would leave that hook calling a missing
-script.
+script. The **Awake with lid closed** toggle needs no such care: its lock lives
+in a process the shell started, so it ends with the shell, and switching it off
+first is only a courtesy.
 
 ## Dependencies
 
@@ -169,6 +185,11 @@ None to install — everything ships with Omarchy v4: Hyprland 0.56+,
 `hyprpicker`.
 `jq` (present on a stock Omarchy install) is used, when available, to show
 release notes for pending updates — the update check works without it.
+
+The **Awake with lid closed** toggle needs no extra package: `systemd-inhibit`
+ships with systemd. Making the built-in panel go dark after a display is
+attached is Omarchy's own clamshell handling (and hyprmoncfg's lid polling when
+that plugin is installed) — this plugin does not touch monitor configuration.
 
 The **Fcitx5 candidate theme** toggle is optional and degrades gracefully:
 it needs a stock fcitx5 install with `omarchy-fcitx5.service` active (a

@@ -2,22 +2,23 @@
 
 [English](README.md) · 繁體中文
 
-![OmaSwiss — 一個 bar icon，六個 Hyprland 工具](preview.png)
+![OmaSwiss — 一個 bar icon，七個筆電與 Hyprland 工具](preview.png)
 
-**一個 bar icon，六個 Hyprland 工具。**
+**一個 bar icon，七個筆電與 Hyprland 工具。**
 
-互換筆電的 Super 與 Alt 鍵、把單一視窗鎖定至任意比例、一鍵切換桌面外觀、遊戲模式調校、輸入法候選視窗主題、快速截圖與螢幕錄影 —— 全部來自同一個彈出面板，閒置時近乎零成本。
+闔蓋而不休眠、互換筆電的 Super 與 Alt 鍵、把單一視窗鎖定至任意比例、一鍵切換桌面外觀、遊戲模式調校、輸入法候選視窗主題、快速截圖與螢幕錄影 —— 全部來自同一個彈出面板，閒置時近乎零成本。
 
 ## 為何你會一直留著它
 
 - **一個面板，毋須終端機。** 每個工具都是一按即用的開關；右擊 bar icon 可即時切換 Super⇄Alt。
 - **閒置成本：一個 icon。** 沒有常駐程序、沒有計時器、沒有輪詢。面板關閉時，插件形同休眠。
-- **更新與重新登入後依然生效。** 所有開關只寫入 Omarchy 自身的狀態檔，設定在 reload、重開機與 `omarchy update` 之後原封不動，Omarchy 選單亦照常運作。
+- **更新與重新登入後依然生效。** 每個開關只寫入一個小型狀態檔，其中屬於 Omarchy 管轄的設定就寫入 Omarchy 自身的旗標檔，因此設定在 reload、重開機與 `omarchy update` 之後原封不動，Omarchy 選單亦照常運作。
 - **四種介面語言。** 可從面板右上角的選單切換 English、繁體中文、日本語、한국어。日文與韓文為機器輔助翻譯，歡迎透過 PR 改善。
 - **有新版本自動提示。** GitHub 上有新 release 時，面板會出現升級標示，游標停在標示上即可檢視更新說明；一按即自動更新（git 安裝），更新完成後 Omarchy shell 會短暫自行重啟，確保新版本立即生效；查詢每天最多一次，絕無輪詢。
 
-## 六個工具
+## 七個工具
 
+- **闔蓋保持運作**（僅限筆電）—— 先闔蓋，再插線。此開關令系統不再因機蓋而休眠，因此可以先放上支架，之後才連接 HDMI、DP 或 Type-C；接上外接螢幕後，Omarchy 自身的闔蓋處理會關閉內建螢幕，閒置鎖定仍照常生效。闔蓋期間電腦持續運作，收納前請先關閉此項。
 - **Super ⇄ Alt 互換** —— 隨時互換筆電內置鍵盤的左 Super 與左 Alt；外接鍵盤完全不受影響。
 - **單一視窗比例** —— 1:1、4:3、3:2、16:9 預設，或自訂 `W:H`（最高 64）。比例在 reload 與登入後保持不變，原生的 `SUPER+CTRL+BACKSPACE` 綁定亦可同時使用。
 - **Opinionated Looks** —— 圓角、半透明 5px 邊框、柔和陰影與 vibrancy blur，一鍵切換；關閉即完全還原 Omarchy 預設。
@@ -69,10 +70,12 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 │   │   ├── domain.md
 │   │   ├── issue-tracker.md
 │   │   └── triage-labels.md
-│   └── fcitx5-candidate-theming.md   # fcitx5 開關的設計簡介與驗證清單
+│   ├── fcitx5-candidate-theming.md   # fcitx5 開關的設計簡介與驗證清單
+│   └── lid-closed-awake.md           # 機蓋為何需要 inhibitor、此開關不做什麼，以及手動驗證清單
 ├── scripts/
 │   ├── check-hardening.sh            # CI 安全基線 tripwire（引號處理、期限、原子寫入等類別）
 │   ├── check-submission.sh           # CI 市集提交規範檢查（README 章節、LICENSE、預覽圖上限）
+│   ├── e2e-lid-awake.sh              # 機蓋開關的 E2E 驗證（需真實 session，刻意不納入 CI）
 │   └── test-fcitx5-conf.sh           # CI 回歸測試：fcitx5 開關的 classicui.conf 合併會保留用戶字體（issue #14）
 ├── AGENTS.md                         # 本 repo 的工作契約：契約、強化規則、E2E 清單
 ├── BarWidget.qml                     # 進入點：全部狀態與動作、bar icon、IPC 介面
@@ -85,7 +88,7 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 ├── manifest.json                     # 插件 manifest：id、版本、進入點
 ├── panel.png                         # 面板原始截圖（文件用）
 ├── preview.png                       # 73:35 行銷封面，置於兩份 README 頂部
-├── tabler-icons.ttf                  # ~8 KB 的 Tabler Icons 子集（15 個 codepoint），bar 與面板共用
+├── tabler-icons.ttf                  # ~8 KB 的 Tabler Icons 子集（16 個 codepoint），bar 與面板共用
 └── .gitignore
 ```
 
@@ -102,11 +105,14 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 | `~/.local/state/omarchy/toggles/hypr/oma-swiss-fcitx5.lua` | fcitx5 的旗標檔（其唯一一行同時就是生效中的 Hyprland 模糊規則） | fcitx5 主題開啟時 |
 | `~/.local/state/glasschan.oma-swiss/lang` | 介面語言 | 首次變更語言後 |
 | `~/.local/state/glasschan.oma-swiss/last-aspect` | 上次設定的比例（驅動面板預填與固定快捷鍵） | 首次設定比例後 |
+| `~/.local/state/glasschan.oma-swiss/lid-awake` | 闔蓋保持運作的狀態檔（檔案存在即為開啟） | 開關開啟期間 |
 | `~/.local/state/glasschan.oma-swiss/update-check` | 更新檢查快取（每日最多一次網路請求） | 首次開啟面板後 |
 | `~/.local/state/glasschan.oma-swiss/update-notes` | 待更新版本的 release 說明 | 僅在有待更新版本時 |
 | `~/.config/omarchy/hooks/theme-set.d/fcitx5` | fcitx5 重新配色 hook，呼叫已部署副本內的腳本 | fcitx5 主題開啟時 |
 | `~/.local/share/fcitx5/themes/omarchy/` | 產生的 fcitx5 主題 | fcitx5 主題開啟時 |
 | `~/.config/fcitx5/conf/classicui.conf` | fcitx5 的主題設定（`Theme=omarchy`）；只改寫主題相關的鍵，字體與其他設定維持不變，原有檔案會先備份一次為 `classicui.conf.pre-oma-swiss` | fcitx5 主題開啟時（備份會保留） |
+
+闔蓋開關除狀態檔外不新增任何檔案：開啟期間，鎖定由 shell 啟動的一個閒置 `systemd-inhibit` 行程持有，並隨 shell 結束而消失。
 
 ## 安裝／移除
 
@@ -115,11 +121,13 @@ omarchy plugin add <本 repo 的 git URL>     # 安裝
 omarchy plugin remove glasschan.oma-swiss   # 移除
 ```
 
-移除前，請先在面板關閉所有開關。每個開關都會留下一個小型狀態檔，在登入時重新套用設定 —— 關閉開關即刪除該檔，插件移除後不會殘留任何東西。移除前特別要先關閉「**輸入法候選視窗主題**」：開啟時它會安裝一個指向插件目錄的重新配色 hook，若插件在開關仍開啟時被移除，該 hook 會殘留並呼叫不存在的腳本。
+移除前，請先在面板關閉所有開關。每個開關都會留下一個小型狀態檔，在登入時重新套用設定 —— 關閉開關即刪除該檔，插件移除後不會殘留任何東西。移除前特別要先關閉「**輸入法候選視窗主題**」：開啟時它會安裝一個指向插件目錄的重新配色 hook，若插件在開關仍開啟時被移除，該 hook 會殘留並呼叫不存在的腳本。「**闔蓋保持運作**」無須為此顧慮：其鎖定存在於 shell 啟動的行程中，隨 shell 結束而消失，先行關閉僅是習慣問題。
 
 ## 依賴
 
 無須額外安裝 —— 一切隨 Omarchy v4 內附：Hyprland 0.56+、`omarchy-capture-screenshot`（slurp）、`omarchy-capture-text`（OCR）、`omarchy-capture-qr`（zbar）、`omarchy-capture-screenrecording` 與 `omarchy-capture-screenrecording-with-webcam`（gpu-screen-recorder）及 `hyprpicker`。若有 `jq`（標準 Omarchy 安裝內建），待更新的面板會一併顯示新版本的更新說明；沒有亦不影響更新檢查。
+
+「**闔蓋保持運作**」開關無須額外安裝任何套件：`systemd-inhibit` 隨 systemd 提供。接上外接螢幕後令內建螢幕熄滅，屬 Omarchy 自身的闔蓋處理（若安裝 hyprmoncfg，亦由其機蓋輪詢負責）——本插件不會更動螢幕設定。
 
 「**輸入法候選視窗主題**」開關為可選功能，缺少依賴時會優雅降級：需要已安裝的標準 fcitx5 且 `omarchy-fcitx5.service` 處於運行狀態（絕不強制啟動已停止的服務），以及標準的 `omarchy-theme-color`。有 ImageMagick 的 `magick` 時會產生圓角 9-patch 背景；沒有時改用方形邊框的後備方案。
 

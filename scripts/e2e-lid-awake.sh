@@ -24,13 +24,12 @@ DESTRUCTIVE=0
 [[ ${1:-} == "--destructive" ]] && DESTRUCTIVE=1
 
 PASS=0
-FAILED=""
 BASELINE=""
 SHELL_KILLED=0
 
 say() { printf '%s\n' "$*"; }
 pass() { PASS=$((PASS + 1)); say "ok   - $*"; }
-fail() { FAILED="$1"; say "FAIL - $1"; exit 1; }
+fail() { say "FAIL - $1"; exit 1; }
 
 ipc() { timeout 20 omarchy-shell "$PLUGIN" "$@" 2>&1; }
 
@@ -45,14 +44,16 @@ inhibitor_pids() {
 }
 
 wait_for() {
-  local want="$1" i
-  for i in $(seq 1 100); do
+  local want="$1"
+  for _ in $(seq 1 100); do
     [[ "$(lid_state)" == "$want" ]] && return 0
     sleep 0.1
   done
   return 1
 }
 
+# Invoked indirectly by the EXIT trap below.
+# shellcheck disable=SC2329
 restore() {
   if [[ -n $BASELINE ]]; then
     if [[ $BASELINE == on ]]; then
