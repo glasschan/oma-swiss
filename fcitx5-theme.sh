@@ -59,9 +59,14 @@ atomic_write() {
   _aw_dir=$(dirname -- "$_aw_target")
   mkdir -p -- "$_aw_dir" || return 1
   _aw_tmp=$(mktemp -- "$_aw_dir/.oma-swiss-fcitx5.XXXXXX") || return 1
-  cat >"$_aw_tmp" &&
-    mv -f -- "$_aw_tmp" "$_aw_target" ||
-    { rm -f -- "$_aw_tmp"; return 1; }
+  # if/else rather than A && B || C: shellcheck's SC2015 flags the shorthand,
+  # and the intent here is plain — a failed cat OR a failed mv both drop the
+  # temp and fail the write.
+  if cat >"$_aw_tmp" && mv -f -- "$_aw_tmp" "$_aw_target"; then
+    return 0
+  fi
+  rm -f -- "$_aw_tmp"
+  return 1
 }
 
 # classicui.conf as this feature wants it: a MERGE, never a replacement.
@@ -193,9 +198,12 @@ strip_marker_block() {
     [ "$_sb_begin" -gt 1 ] &&
       sed -n "1,$((_sb_begin - 1))p" "$LOOKNFEEL_LUA"
     sed -n "$((_sb_end + 1)),\$p" "$LOOKNFEEL_LUA"
-  } >"$_sb_tmp" &&
-    mv -f -- "$_sb_tmp" "$LOOKNFEEL_LUA" ||
-    { rm -f -- "$_sb_tmp"; return 1; }
+  } >"$_sb_tmp"
+  if mv -f -- "$_sb_tmp" "$LOOKNFEEL_LUA"; then
+    return 0
+  fi
+  rm -f -- "$_sb_tmp"
+  return 1
 }
 
 generate() {

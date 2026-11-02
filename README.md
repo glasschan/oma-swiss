@@ -94,7 +94,7 @@ Every tracked file in the repo, with its role:
 .
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                    # CI: manifest validation + submission/hardening checks + fcitx5 conf regression test
+│       ├── ci.yml                    # CI: manifest validation + submission/hardening/shellcheck checks + fcitx5 conf regression test
 │       └── release.yml               # CI: tag-checked release packaging (zip + sha256 + GitHub Release)
 ├── design/
 │   ├── cover.html                    # Source for the preview.png cover (rendered with headless Chromium)

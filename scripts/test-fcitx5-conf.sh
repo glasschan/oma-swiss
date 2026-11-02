@@ -11,6 +11,9 @@
 # Usage: scripts/test-fcitx5-conf.sh   (exit 0 = pass)
 set -u
 
+# CDPATH= preceding cd is deliberate: the empty assignment keeps the shell
+# from printing a cd jump. shellcheck reads the space as an assignment typo.
+# shellcheck disable=SC1007
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 script="$repo/fcitx5-theme.sh"
 sandboxes=""
@@ -28,7 +31,9 @@ new_home() {
   mkdir -p "$home/bin" "$home/.config/fcitx5/conf" "$home/.config/hypr"
   printf '#!/bin/sh\nexit 0\n' >"$home/bin/hyprctl"
   printf '#!/bin/sh\nexit 0\n' >"$home/bin/systemctl"
-  # KEY FALLBACK -> echo the fallback, so generate() has a palette.
+  # KEY FALLBACK -> echo the fallback, so generate() has a palette. The $2 is
+  # for the generated stub, not for this script — hence the single quotes.
+  # shellcheck disable=SC2016
   printf '#!/bin/sh\nprintf "%%s\\n" "$2"\n' >"$home/bin/omarchy-theme-color"
   chmod +x "$home/bin/hyprctl" "$home/bin/systemctl" "$home/bin/omarchy-theme-color"
   conf="$home/.config/fcitx5/conf/classicui.conf"
@@ -142,6 +147,28 @@ cp "$conf" "$home/foreign.conf"
 run unapply || { echo "FAIL [E]: unapply failed"; fail=1; }
 cmp -s "$home/foreign.conf" "$conf" ||
   { echo "FAIL [E]: foreign file was modified"; fail=1; }
+end
+
+# --- F: the migration cleanup strips the legacy looknfeel.lua block and
+#        nothing else (the mktemp + mv write path). -------------------------
+begin "legacy looknfeel.lua marker block is stripped, neighbours kept"
+new_home
+look="$home/.config/hypr/looknfeel.lua"
+printf '%s\n' '-- top of the file' \
+  '-- BEGIN fcitx5 candidate blur (setup-fcitx5-theme.sh)' \
+  'hl.layer_rule({ match = { namespace = "fcitx" }, blur = true })' \
+  '-- END fcitx5 candidate blur (setup-fcitx5-theme.sh)' \
+  '-- bottom of the file' >"$look"
+if run apply; then
+  grep -q 'BEGIN fcitx5 candidate blur' "$look" &&
+    { echo "FAIL [F]: legacy marker block survived"; fail=1; }
+  grep -qx -- '-- top of the file' "$look" ||
+    { echo "FAIL [F]: line before the block was lost"; fail=1; }
+  grep -qx -- '-- bottom of the file' "$look" ||
+    { echo "FAIL [F]: line after the block was lost"; fail=1; }
+else
+  echo "FAIL [F]: apply failed"; fail=1
+fi
 end
 
 if [ "$fail" -ne 0 ]; then

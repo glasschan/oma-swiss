@@ -20,6 +20,12 @@
 #      io.open "wx" does not exist in hyprctl's Lua)
 #   7. dd reads must be bounded: timeout deadline + iflag=nonblock + bs=
 #      and count= byte caps on the same line
+#   9. fcitx5-theme.sh inherits the same classes AGENTS.md promises it
+#      honors (it is the newest, largest and most privileged shell here):
+#      every hyprctl/systemctl/magick/omarchy-theme-color call sits behind
+#      coreutils timeout, and every write target is a same-directory mktemp
+#      ($*tmp*), never a final path. Test scripts are not scanned — their
+#      throwaway sandbox writes are the point.
 # Follow-up finding (review of 209f221, 2026-08-27):
 #   8. no `exec N>` fd-redirection opens on predictable paths — the open
 #      truncates through a planted symlink; mutual-exclusion locks ride a
@@ -73,8 +79,26 @@ for path in files:
         if re.search("[嘅揀]|唔係|成個|闊", line):
             fails.append(f"{where}: Cantonese marker in shipped Chinese (must be 書面語)")
 
+# The fcitx5 toggle's script is shell, so the QML loop above never sees it —
+# but AGENTS.md promises it honors the same classes. Two mechanical rules
+# cover what it can get wrong: an unfenced compositor/dbus/service call (a
+# hung hyprctl wedges the toggle) and a write that lands on a final path
+# (a planted symlink redirects it). Test scripts are deliberately out of
+# scope: their throwaway-sandbox writes to final paths are the point.
+if os.path.exists("fcitx5-theme.sh"):
+    shell_call = re.compile(r"(^|[;&|(])\s*(hyprctl|systemctl|magick|omarchy-theme-color)\b")
+    write_target = re.compile(r">\s*\"?\$\{?([A-Za-z_][A-Za-z0-9_]*)")
+    for n, line in enumerate(open("fcitx5-theme.sh", encoding="utf-8").read().splitlines(), 1):
+        where = f"fcitx5-theme.sh:{n}"
+        if line.lstrip().startswith("#"):
+            continue
+        if shell_call.search(line) and "timeout" not in line and "command -v" not in line:
+            fails.append(f"{where}: compositor/tool call without coreutils timeout")
+        for var in write_target.findall(line):
+            if "tmp" not in var.lower():
+                fails.append(f"{where}: write target ${var} — land on a same-directory mktemp + mv -f")
+
 if fails:
     sys.exit("check-hardening:\n  " + "\n  ".join(fails))
-
 print("check-hardening: OK")
 PY
