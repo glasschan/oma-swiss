@@ -59,7 +59,7 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 .
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                    # CI：校驗 manifest，並執行提交規範與安全強化檢查
+│       ├── ci.yml                    # CI：校驗 manifest，並執行提交規範、安全強化、shellcheck 檢查與 fcitx5 設定合併回歸測試
 │       └── release.yml               # CI：發布 GitHub Release（tag 須與 manifest 版本一致，打包 zip + sha256）
 ├── design/
 │   ├── cover.html                    # preview.png 封面的原始檔（以 headless Chromium 轉譯）
@@ -72,7 +72,8 @@ repo 內所有被追蹤的檔案，以及各自的角色：
 │   └── fcitx5-candidate-theming.md   # fcitx5 開關的設計簡介與驗證清單
 ├── scripts/
 │   ├── check-hardening.sh            # CI 安全基線 tripwire（引號處理、期限、原子寫入等類別）
-│   └── check-submission.sh           # CI 市集提交規範檢查（README 章節、LICENSE、預覽圖上限）
+│   ├── check-submission.sh           # CI 市集提交規範檢查（README 章節、LICENSE、預覽圖上限）
+│   └── test-fcitx5-conf.sh           # CI 回歸測試：fcitx5 開關的 classicui.conf 合併會保留用戶字體（issue #14）
 ├── AGENTS.md                         # 本 repo 的工作契約：契約、強化規則、E2E 清單
 ├── BarWidget.qml                     # 進入點：全部狀態與動作、bar icon、IPC 介面
 ├── EvalQueue.qml                     # 單槽佇列，讓連續的 hyprctl 切換依序落地

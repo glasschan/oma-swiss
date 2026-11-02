@@ -31,3 +31,18 @@ jobs:
       # rules (zh must be 書面語). See the script header for the exemptions.
       - name: Hardening + copy tripwires
         run: scripts/check-hardening.sh
+
+      # Static analysis for the shell side: fcitx5-theme.sh carries the
+      # write/hardening contract AGENTS.md describes, and scripts/ holds the
+      # tripwires themselves. ubuntu-latest ships shellcheck.
+      - name: Shellcheck (fcitx5-theme.sh + scripts)
+        run: |
+          shellcheck fcitx5-theme.sh
+          shellcheck scripts/*.sh
+
+      # Regression test for the fcitx5 toggle's classicui.conf merge contract
+      # (issue #14): the window gets themed, the user's font and every
+      # non-owned key survive apply/unapply. Throwaway HOMEs, stubbed
+      # hyprctl/systemctl/omarchy-theme-color — no root, no compositor.
+      - name: fcitx5 classicui.conf merge regression test
+        run: scripts/test-fcitx5-conf.sh

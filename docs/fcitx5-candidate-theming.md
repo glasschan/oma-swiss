@@ -142,7 +142,7 @@ Follow the existing toggle contract ("one flag file owns the feature; absent = s
 4. `stat -c '%x' ~/.local/share/fcitx5/themes/omarchy/theme.conf` — fresh atime after a popup proves classicui loaded it (fact #4).
 5. Toggle OFF → the flag and all artifacts gone (classicui.conf restored from the backup when one exists; without one, only the four owned keys are stripped and a file that becomes empty is removed — never a file without `Theme=omarchy`); popup back to fcitx5 default; no orphan hook entries; `looknfeel.lua` keeps no leftover legacy marker lines (the standalone block is stripped on every apply AND unapply).
 6. Idempotency: run `fcitx5-theme.sh apply` twice → byte-identical artifacts, existing backup never clobbered.
-7. Font preservation (issue #14): with a custom `Font="Sarasa Term TC 12"` (plus `MenuFont=`, `VerticalCandidateList=True`) in classicui.conf, apply → those lines survive byte-for-byte, apply again → no duplicated keys, unapply (backup path) → byte-identical to the original file; without a backup → unapply keeps the custom font and other keys and drops only `Theme`/`DarkTheme`/`UseDarkTheme`/`PerScreenDPI`.
+7. Font preservation (issue #14): with a custom `Font="Sarasa Term TC 12"` (plus `MenuFont=`, `VerticalCandidateList=True`) in classicui.conf, apply → those lines survive byte-for-byte, apply again → no duplicated keys, unapply (backup path) → byte-identical to the original file; without a backup → unapply keeps the custom font and other keys and drops only `Theme`/`DarkTheme`/`UseDarkTheme`/`PerScreenDPI`. Automated as `scripts/test-fcitx5-conf.sh` (CI; throwaway HOMEs, stubbed hyprctl/systemctl/omarchy-theme-color) — run it before this manual pass.
 
 ## 6. File map
 
