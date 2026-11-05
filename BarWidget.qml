@@ -215,15 +215,83 @@ BarWidget {
   readonly property string fcitxScriptPath: Qt.resolvedUrl("fcitx5-theme.sh").toString().replace("file://", "")
   property bool fcitxOn: false
 
+  // ---- lid awake (laptop only) -------------------------------------------------
+  //
+  // A laptop closed before its cables are plugged in still suspends: logind's
+  // default HandleLidSwitch=suspend applies, and the "docked" exemption that
+  // makes the plug-first workflow work is decided at lid-close time (logind
+  // counts attached external displays as docked). This toggle holds a
+  // handle-lid-switch inhibitor instead, so the lid is ignored whether or not a
+  // display is attached: close the lid first, dock afterwards.
+  //
+  // What it deliberately does NOT do: the built-in panel is turned off by the
+  // clamshell handling Omarchy and hyprmoncfg already run (after an external
+  // display is attached), idle lock still applies, and the machine keeps
+  // running while closed. No lid detection, no monitor rules, no timer here.
+  //
+  // The state file is the only intent: setLid writes it atomically and
+  // returns, and reconcileLid drives the system towards it — so a burst of
+  // clicks converges on the last one and a manual edit of the file behaves
+  // like a click (the same "flag file is the truth" contract as the other
+  // toggles). The lock is user-space: no root, no logind drop-in.
+  readonly property string lidStatePath: stateDir + "/lid-awake"
+  // Fixed marker: the ONLY identifier the load-time sweep matches on, so
+  // unrelated inhibitors are never touched. Contract value; never localize.
+  readonly property string lidMarker: "oma-swiss-lid-awake"
+  property bool lidAwake: false
+  property bool lidSupported: false
+  // Gates reconcile until the sweep has finished, so the sweep can never kill
+  // the inhibitor this very load is about to arm.
+  property bool lidReady: false
+  // One announcement per failure run; reset by the next successful arm so a
+  // flapping inhibitor cannot spam notifications.
+  property bool lidFailureReported: false
+
+  function setLid(on) {
+    if (!lidSupported) {
+      console.log("oma-swiss: lid awake unsupported on this machine")
+      return
+    }
+    console.log("oma-swiss: lid awake", on ? "on" : "off")
+    lidAwake = on
+    if (on) lidFile.setText("on\n")
+    else lidOffProc.running = true
+  }
+
+  // Drives the system towards lidAwake. Idempotent, and safe to call from any
+  // watch, probe exit or reload: the process is only touched when it differs
+  // from the intent.
+  function reconcileLid() {
+    if (!lidReady || !lidSupported) return
+    if (lidAwake) {
+      if (lidProc.running) return
+      lidFailureReported = false
+      lidProc.running = true
+    } else if (lidProc.running) {
+      lidProc.running = false
+    }
+  }
+
+  // The lock is gone while the intent says on: believe the system, not the
+  // click — fall back to off and say so once.
+  function failLid() {
+    console.warn("oma-swiss: lid inhibitor unavailable, toggling back off")
+    lidAwake = false
+    lidOffProc.running = true
+    if (lidFailureReported) return
+    lidFailureReported = true
+    lidFailProc.running = true
+  }
+
   // ---- quick actions -----------------------------------------------------------
 
   // Tabler Icons (https://tabler.io/icons, MIT) — the whole webfont is 2.8 MB,
-  // so the bundled tabler-icons.ttf is a subset holding only the 15 codepoints
+  // so the bundled tabler-icons.ttf is a subset holding only the 16 codepoints
   // this plugin uses (8 KB). Rebuild it from the upstream webfont (fetch
   // dist/fonts/tabler-icons.ttf from @tabler/icons-webfont, e.g. on
   // jsdelivr) when an icon changes:
   //   python -m fontTools.subset tabler-icons-full.ttf \
-  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C,U+EF78 \
+  //     --unicodes=U+F201,U+EFE6,U+EA89,U+EBE6,U+FCC3,U+F452,U+F2FE,U+ED57,U+EB11,U+EE76,U+F1F4,U+EB63,U+EB01,U+EC9C,U+EF78,U+EB64 \
   //     --name-IDs='*' --output-file=<plugin dir>/tabler-icons.ttf
   // Codepoints come from @tabler/icons-webfont's tabler-icons.css. They
   // collide with Nerd Fonts' codicons range, so icons must render through
@@ -343,6 +411,9 @@ BarWidget {
       fcitx5_desc: "Themes the fcitx5 candidate window with the Omarchy palette — rounded corners, soft blur. Retints on every theme change and keeps your own fcitx5 font. Off = fcitx5 defaults.",
       pin_label: "Pin ratio hotkey",
       pin_desc: "SUPER+CTRL+BACKSPACE toggles your last ratio instead of the stock 1:1. Reversible any time.",
+      lid_fail: "Could not hold the lid switch, so lid-awake is off again.",
+      lid_label: "Awake with lid closed",
+      lid_desc: "The lid no longer suspends the machine: close it first, then plug HDMI, DP or Type-C and the external display comes up. The built-in panel is turned off by Omarchy's clamshell handling once a display is attached. Idle lock still applies, and the machine keeps running while closed, so turn this off before packing.",
       off: "Off",
       width: "Width", height: "Height", apply: "Apply",
       active: "Active", custom: "custom", offState: "off",
@@ -374,6 +445,9 @@ BarWidget {
       fcitx5_desc: "以 Omarchy 配色為 fcitx5 候選視窗套用圓角邊框與毛玻璃效果，切換主題時自動重新配色，並保留你原有的字體設定；關閉即還原 fcitx5 預設。",
       pin_label: "固定比例快捷鍵",
       pin_desc: "SUPER+CTRL+BACKSPACE 會改為切換你上次設定的比例（而非預設 1:1），可隨時還原。",
+      lid_fail: "無法取得機蓋控制權，闔蓋保持運作已關閉。",
+      lid_label: "闔蓋保持運作",
+      lid_desc: "闔上機蓋不再進入休眠：可先闔蓋，再連接 HDMI、DP 或 Type-C 外接螢幕。接上外接螢幕後，Omarchy 的闔蓋處理會關閉內建螢幕。閒置鎖定仍然生效，且闔蓋期間電腦持續運作，收納前請先關閉此項。",
       off: "關",
       width: "寬", height: "高", apply: "套用",
       active: "目前", custom: "自訂", offState: "關閉",
@@ -405,6 +479,9 @@ BarWidget {
       fcitx5_desc: "fcitx5 の候補ウィンドウを Omarchy のパレットに合わせた角丸・半透明の枠・vibrancy ブラーで装飾し、テーマ変更時に自動で再配色します。お使いのフォント設定はそのまま保持します。オフで fcitx5 の既定に戻ります。",
       pin_label: "比率ホットキーを固定",
       pin_desc: "SUPER+CTRL+BACKSPACE が、既定の 1:1 の代わりに最後に設定した比率を切り替えます。いつでも元に戻せます。",
+      lid_fail: "蓋スイッチを抑止できなかったため、蓋を閉じて継続をオフに戻しました。",
+      lid_label: "蓋を閉じて継続",
+      lid_desc: "蓋を閉じてもスリープしません。先に蓋を閉じてから HDMI・DP・Type-C の外部ディスプレイを接続できます。外部ディスプレイを接続すると、Omarchy のクラムシェル処理が内蔵パネルをオフにします。アイドル時のロックは有効なままで、蓋を閉じたまま動作し続けるため、持ち運ぶ前にはオフにしてください。",
       off: "オフ",
       width: "幅", height: "高さ", apply: "適用",
       active: "現在", custom: "カスタム", offState: "オフ",
@@ -436,6 +513,9 @@ BarWidget {
       fcitx5_desc: "fcitx5 후보 창을 Omarchy 팔레트에 맞춘 둥근 모서리, 반투명 테두리, vibrancy 블러로 꾸미며 테마 변경 시 자동으로 다시 색을 입힙니다. 설정한 글꼴은 그대로 유지됩니다. 끄면 fcitx5 기본값으로 돌아갑니다.",
       pin_label: "비율 단축키 고정",
       pin_desc: "SUPER+CTRL+BACKSPACE 키가 기본 1:1 대신 마지막으로 설정한 비율을 전환합니다. 언제든지 되돌릴 수 있습니다.",
+      lid_fail: "덮개 스위치를 유지하지 못해 덮개 닫고 계속 실행을 다시 껐습니다.",
+      lid_label: "덮개 닫고 계속 실행",
+      lid_desc: "덮개를 닫아도 절전 모드로 전환되지 않습니다. 덮개를 먼저 닫은 뒤 HDMI·DP·Type-C 외부 디스플레이를 연결할 수 있습니다. 외부 디스플레이를 연결하면 Omarchy의 클램셸 처리로 내장 패널이 꺼집니다. 유휴 잠금은 그대로 적용되며, 덮개를 닫은 채로 계속 동작하므로 이동 전에 꺼 주십시오.",
       off: "끄기",
       width: "너비", height: "높이", apply: "적용",
       active: "현재", custom: "사용자 지정", offState: "꺼짐",
@@ -722,6 +802,7 @@ BarWidget {
     if (!queryProc.running) queryProc.running = true
     aspectFlagFile.reload()
     gamingFlagFile.reload()
+    lidFile.reload()
   }
 
   // The live reading is the only source of truth for the swap: this is the
@@ -763,6 +844,8 @@ BarWidget {
   Component.onCompleted: {
     checkStringParity()
     ensureStateDir.running = true
+    lidSupportProc.running = true
+    lidSweepProc.running = true
     refresh()
   }
 
@@ -834,6 +917,7 @@ BarWidget {
   //   omarchy-shell glasschan.oma-swiss look           opinionated looks on/off
   //   omarchy-shell glasschan.oma-swiss gaming         gaming mode on/off
   //   omarchy-shell glasschan.oma-swiss fcitx          fcitx5 candidate theme on/off
+  //   omarchy-shell glasschan.oma-swiss lid            stay awake with the lid closed on/off
   //   omarchy-shell glasschan.oma-swiss lang           cycle panel language en→zh→ja→ko→en
   //   omarchy-shell glasschan.oma-swiss panel          open/close popup
   IpcHandler {
@@ -846,6 +930,7 @@ BarWidget {
     function look(): void { root.setLook(!root.lookOn) }
     function gaming(): void { root.setGaming(!root.gamingOn) }
     function fcitx(): void { root.setFcitx(!root.fcitxOn) }
+    function lid(): void { root.setLid(!root.lidAwake) }
     function lang(): void { root.toggleLang() }
     function panel(): void { root.togglePanel() }
     function open(): void { root.open() }
@@ -860,6 +945,7 @@ BarWidget {
         + " lang=" + root.uiLang
         + " update=" + (root.updateAvailable ? root.latestVersion : "none")
         + " fcitx=" + (root.fcitxOn ? "on" : "off")
+        + " lid=" + (root.lidAwake ? "on" : "off")
         + " version=" + root.pluginVersion
     }
   }
@@ -1188,6 +1274,124 @@ BarWidget {
       if (exitCode === 42) return
       var m = /"tag_name"\s*:\s*"v?([^"]+)"/.exec(updateOut.text || "")
       updateCacheFile.setText(Date.now() + " " + (m ? m[1] : ""))
+    }
+  }
+
+  // Lid support is the ACPI lid device's presence, the same signal Omarchy's
+  // own laptop helpers read. Machines without it hide the row and no-op the
+  // command; nothing is ever acquired there.
+  Process {
+    id: lidSupportProc
+    command: ["sh", "-c",
+      'for s in /proc/acpi/button/lid/*/state; do [ -r "$s" ] && exit 0; done; exit 1']
+    onExited: function(exitCode) {
+      root.lidSupported = exitCode === 0
+      root.reconcileLid()
+    }
+  }
+
+  // Load-time sweep. A shell killed with SIGKILL leaves its inhibitor children
+  // alive, which would keep lid handling disabled forever with nothing in the
+  // UI showing it. The sweep reads logind's own JSON listing (no pgrep pattern
+  // that could match its own command line), keeps the PIDs whose --why carries
+  // our marker, and kills the ones whose parent is NOT this shell — one bar
+  // instance exists per monitor, so a sibling instance's live inhibitor must
+  // survive (it is one process per instance by design: identical locks, each
+  // released when the state file turns off, and harmless while duplicated).
+  Process {
+    id: lidSweepProc
+    command: ["timeout", "10", "systemd-inhibit", "--list", "--json=short"]
+    stdout: StdioCollector {
+      id: lidSweepOut
+      waitForEnd: true
+    }
+    onExited: function(exitCode) {
+      var pids = []
+      try {
+        var list = JSON.parse(lidSweepOut.text || "[]")
+        if (!Array.isArray(list)) list = []
+        for (var i = 0; i < list.length; i++) {
+          if (String(list[i].why || "").indexOf(root.lidMarker) === -1) continue
+          var pid = String(list[i].pid || "")
+          if (/^\d+$/.test(pid) && pid !== "0") pids.push(pid)
+        }
+      } catch (e) {
+        console.warn("oma-swiss: could not parse the inhibitor list:", e)
+      }
+      if (pids.length === 0) {
+        root.lidReady = true
+        root.reconcileLid()
+        return
+      }
+      console.log("oma-swiss: sweeping stale lid inhibitors", pids.join(","))
+      // $PPID is this shell: a leftover from a dead shell was reparented away
+      // from it, so only those get killed.
+      lidStaleProc.command = ["sh", "-c",
+        'for pid in "$@"; do '
+        + 'case $pid in ""|*[!0-9]*) continue;; esac; '
+        + 'pp=$(sed -n "s/^PPid:[[:space:]]*//p" "/proc/$pid/status" 2>/dev/null); '
+        + '[ "$pp" = "$PPID" ] && continue; '
+        + 'kill "$pid" 2>/dev/null || true; '
+        + 'done', "sh"].concat(pids)
+      lidStaleProc.running = true
+    }
+  }
+
+  Process {
+    id: lidStaleProc
+    onExited: function(exitCode) {
+      root.lidReady = true
+      root.reconcileLid()
+    }
+  }
+
+  // The inhibitor. `sleep infinity` is idle (no CPU); reconcileLid stops the
+  // process when the intent flips off, and stopping it releases the lock (the
+  // PID logind lists is this process). Any exit while the intent is still on
+  // means the lock is gone, so the toggle falls back to off instead of
+  // claiming a state the system refused.
+  Process {
+    id: lidProc
+    command: ["systemd-inhibit", "--what=handle-lid-switch", "--mode=block",
+      "--who=OmaSwiss", "--why=" + root.lidMarker, "sleep", "infinity"]
+    onExited: function(exitCode) {
+      if (!root.lidAwake || !root.lidReady) return
+      console.warn("oma-swiss: lid inhibitor exited with", exitCode)
+      root.failLid()
+    }
+  }
+
+  // Off removes the state file rather than emptying it: the file's existence
+  // is the state, so an empty file would still read as on.
+  Process {
+    id: lidOffProc
+    command: ["rm", "-f", root.lidStatePath]
+  }
+
+  Process {
+    id: lidFailProc
+    command: ["timeout", "10", "omarchy-notification-send", "--app-name", "OmaSwiss",
+      "-u", "normal", root.tr("lid_fail")]
+  }
+
+  // Lid state mirrors the state file's existence, like the other toggles:
+  // watching covers our own writes, the failure path's removal, and a manual
+  // `touch`/`rm` alike. Every load finishes with a reconcile, so the system
+  // follows the file rather than a remembered click.
+  FileView {
+    id: lidFile
+    path: root.lidStatePath
+    atomicWrites: true
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      root.lidAwake = true
+      root.reconcileLid()
+    }
+    onLoadFailed: {
+      root.lidAwake = false
+      root.reconcileLid()
     }
   }
 

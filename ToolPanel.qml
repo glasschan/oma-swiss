@@ -454,7 +454,10 @@ Panel {
 
         // The five toggles as one 切換 group of single-line rows — the
         // former one-card-per-toggle layout cost ~120px each. Row order:
-        // gaming, swap, looks, fcitx5, pin. Descriptions live on row hover.
+        // gaming, swap, looks, fcitx5, pin, lid. Descriptions live on row
+        // hover. The lid row is laptop-only: the toggle needs a lid switch to
+        // hold, so machines without one hide the row (and its divider)
+        // instead of showing a control that can never act.
         BorderSurface {
           width: parent.width
           height: toggleRows.height
@@ -520,6 +523,18 @@ Panel {
               tip: root.t("pin_desc")
               checked: root.tool && root.tool.pinHotkey
               onToggled: if (root.tool) root.tool.setPin(!root.tool.pinHotkey)
+            }
+
+            GroupDivider { visible: root.tool ? root.tool.lidSupported : false }
+
+            ToggleRow {
+              visible: root.tool ? root.tool.lidSupported : false
+              iconGlyph: "\uEB64" // tabler device-laptop
+              iconFamily: root.tool ? root.tool.iconFont : ""
+              label: root.t("lid_label")
+              tip: root.t("lid_desc")
+              checked: root.tool && root.tool.lidAwake
+              onToggled: if (root.tool) root.tool.setLid(!root.tool.lidAwake)
             }
           }
         }
