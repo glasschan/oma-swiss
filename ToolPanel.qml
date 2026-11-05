@@ -473,7 +473,7 @@ Panel {
             spacing: 0
 
             ToggleRow {
-              iconGlyph: "\uF1F4" // tabler device-gamepad
+              iconGlyph: "\uEB63" // tabler device-gamepad
               iconFamily: root.tool ? root.tool.iconFont : ""
               label: root.t("gaming_label")
               tip: root.t("gaming_desc")
@@ -484,7 +484,7 @@ Panel {
             GroupDivider {}
 
             ToggleRow {
-              iconGlyph: "\uEB63" // tabler arrows-exchange
+              iconGlyph: "\uF1F4" // tabler arrows-exchange
               iconFamily: root.tool ? root.tool.iconFont : ""
               label: root.t("swap_label")
               tip: root.t("swap_desc")
