@@ -414,6 +414,9 @@ Panel {
               from: 1
               to: 64
               fieldWidth: customRow.cellW
+              // non-editable: an editable TextInput makes Qt sync-read the
+              // Wayland clipboard offer on every change (review #13962)
+              field.editable: false
             }
 
             NumberField {
@@ -422,6 +425,7 @@ Panel {
               from: 1
               to: 64
               fieldWidth: customRow.cellW
+              field.editable: false
             }
 
             Item {
